@@ -10,7 +10,7 @@
 
 OpsChugex LocalOps MCP is a cross-platform Model Context Protocol server for safely inspecting local Windows and Linux systems. It is designed as the local/private-infrastructure counterpart to the Cloud DevOps MCP Server.
 
-Version 0.8.0 adds snapshot-based Fleet Intelligence on top of the v0.7 private root-cause layer. The public MCP can capture bounded local node snapshots, hold up to 500 normalized snapshots in an in-memory registry, and expose fleet health/inventory views. Cross-node comparison and drift analysis run through the private OpsChugex LocalOps Intelligence Core. v0.8 does not add SSH, WinRM, remote shell, credential storage, lateral execution or automatic cross-node remediation.
+Version 0.9.0 extends LocalOps into Private Infrastructure Intelligence. The public MCP adds read-only local virtualization, storage-capacity/health and local battery/UPS telemetry, while bounded caller-supplied private-infrastructure snapshots can be analyzed for device health and network topology through the private OpsChugex LocalOps Intelligence Core. v0.9 does not perform subnet discovery, remote login, SNMP writes, hypervisor/storage mutation, lateral execution or cross-device remediation.
 
 ## Why this exists
 
@@ -60,12 +60,18 @@ LocalOps starts at the operating-system layer:
 - fleet health and inventory summaries
 - explicit-baseline node comparison
 - configuration, software, patch, certificate and security drift
+- local Hyper-V, VirtualBox, Proxmox, libvirt and VMware CLI inventory where available
+- exact local VM-state lookup without mutation
+- local storage capacity and bounded storage-health evidence
+- local Windows battery/UPS or Linux UPower telemetry
+- private network-device health from caller-supplied snapshots
+- private topology components, isolated nodes, down links and articulation/dependency concentration
 - normalized Windows/Linux outputs
 - explicit R0-R2 safety boundaries with R3+ blocked
 
 The long-term goal is evidence correlation across endpoints, private infrastructure, networking, storage and virtualization while keeping advanced OpsChugex intelligence proprietary.
 
-## v0.8 tools
+## v0.9 tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -149,6 +155,13 @@ The long-term goal is evidence correlation across endpoints, private infrastruct
 | `patch_drift` | Compare Windows hotfix or Linux kernel/package patch markers |
 | `certificate_drift` | Compare certificate presence and expiry metadata |
 | `security_drift` | Compare local-admin and summarized security-change evidence |
+| `virtual_machine_inventory` | Inspect locally available Hyper-V, VirtualBox, Proxmox, libvirt or VMware CLI inventory |
+| `vm_health` | Inspect one exact local VM ID/name and report observed provider state |
+| `storage_capacity` | Summarize local fixed-filesystem capacity and utilization |
+| `storage_health` | Combine filesystem utilization with supported local physical-disk health evidence |
+| `ups_health` | Read locally exposed Windows battery/UPS or Linux UPower telemetry |
+| `network_device_health` | Analyze bounded caller-supplied private-device snapshots through the private core |
+| `private_network_topology` | Analyze caller-supplied private-infrastructure nodes/links without discovery or probing |
 
 ## Architecture
 
@@ -165,7 +178,7 @@ flowchart TD
     Client2 --> Core["Private OpsChugex LocalOps Intelligence Core"]
 ```
 
-The public MCP owns protocol handling, safe collectors, normalized node snapshots, the in-memory fleet registry, schemas, the loopback client and operator-facing tools. The private OpsChugex intelligence core owns correlation, root-cause ranking, confidence scoring, evidence-chain construction, fleet comparison and drift reasoning.
+The public MCP owns protocol handling, safe collectors, normalized node/fleet/infrastructure schemas, local virtualization/storage/power adapters, the in-memory fleet registry, the loopback client and operator-facing tools. The private OpsChugex intelligence core owns correlation, root-cause ranking, fleet drift, private device-health reasoning and topology analysis.
 
 ## Quickstart
 
@@ -195,7 +208,7 @@ npm run dev
 
 ### Optional private intelligence core
 
-The v0.6 correlation tools, v0.7 root-cause tools and v0.8 private fleet comparison/drift tools require the private OpsChugex LocalOps Intelligence Core to be running locally. Configure the public MCP process with:
+The v0.6 correlation tools, v0.7 root-cause tools, v0.8 private fleet comparison/drift tools and v0.9 network-device/topology analysis require the private OpsChugex LocalOps Intelligence Core to be running locally. Configure the public MCP process with:
 
 ```text
 LOCALOPS_INTELLIGENCE_URL=http://127.0.0.1:43123
@@ -206,7 +219,7 @@ The public client rejects non-loopback intelligence URLs. If the private core is
 
 ## Safety model
 
-v0.8 keeps the v0.5 local execution boundary and adds snapshot-based fleet analysis:
+v0.9 keeps the v0.5 local execution boundary and extends read-only visibility into private infrastructure:
 
 ```text
 R0 READ                     allowed
@@ -215,6 +228,7 @@ R2 BOUNDED EXECUTION         disabled by default; explicit approval required
 R3+ HIGHER-RISK EXECUTION    not exposed
 PRIVATE INTELLIGENCE          loopback-only, authenticated, analysis-only
 FLEET SNAPSHOTS               bounded, in-memory, no remote control
+PRIVATE INFRASTRUCTURE         local reads + caller-supplied snapshots only
 ```
 
 Important controls:
@@ -261,6 +275,13 @@ Important controls:
 - fleet drift means difference, not automatically error, unauthorized change or compromise
 - no SSH, WinRM, remote shell, credential storage or lateral execution
 - no automatic cross-node remediation
+- no subnet discovery, remote device login or credential collection
+- no SNMP writes or remote management mutation
+- no hypervisor VM start/stop/create/delete actions
+- no storage mutation, formatting or filesystem changes
+- private-infrastructure snapshots do not authenticate or attest device identity
+- topology is derived only from submitted nodes/links and is not active discovery
+- articulation nodes indicate dependency concentration in submitted topology, not guaranteed production single points of failure
 - bounded list sizes
 - strict PID validation
 - strict service-name validation
@@ -274,9 +295,9 @@ Some platform collectors may require local permission to inspect specific proces
 
 This repository is the public implementation and portfolio-facing gateway.
 
-The separate private **OpsChugex LocalOps Intelligence Core** implements v0.6 correlation, v0.7 root-cause intelligence and v0.8 fleet comparison/drift reasoning. Future private capabilities include anomaly detection, predictive health, cross-node incident correlation and orchestration.
+The separate private **OpsChugex LocalOps Intelligence Core** implements v0.6 correlation, v0.7 root-cause intelligence, v0.8 fleet drift and v0.9 private device-health/topology reasoning. Future private capabilities include predictive health, deeper cross-node incident correlation and orchestration.
 
-The public repository contains safe collection, bounded fleet snapshots, schemas, the in-memory registry and the loopback client. Proprietary correlation, ranking, confidence and fleet drift algorithms are not included in this MIT repository.
+The public repository contains safe collection, bounded snapshots, schemas, local infrastructure adapters, the in-memory fleet registry and the loopback client. Proprietary correlation, ranking, drift and topology-reasoning algorithms are not included in this MIT repository.
 
 ## Roadmap
 
@@ -290,7 +311,7 @@ The public repository contains safe collection, bounded fleet snapshots, schemas
 | 0.6 | Evidence correlation, completed |
 | 0.7 | Root-cause intelligence, completed |
 | 0.8 | Fleet intelligence, completed |
-| 0.9 | Private infrastructure and virtualization |
+| 0.9 | Private infrastructure and virtualization, completed |
 | 1.0 | Production LocalOps platform |
 
 ## Development principles

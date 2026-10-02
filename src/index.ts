@@ -23,8 +23,9 @@ import { registerControlledExecutionTools } from "./execution-tools.js";
 import { registerCorrelationTools } from "./correlation-tools.js";
 import { registerRootCauseTools } from "./root-cause-tools.js";
 import { registerFleetTools } from "./fleet-tools.js";
+import { registerInfrastructureTools } from "./infrastructure-tools.js";
 
-const VERSION = "0.8.0";
+const VERSION = "0.9.0";
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -80,7 +81,7 @@ export function createServer() {
     { name: "opschugex-localops-mcp", version: VERSION },
     {
       instructions:
-        "Use LocalOps tools to inspect local Windows or Linux hosts. v0.8 adds snapshot-based Fleet Intelligence: bounded node snapshots can be registered in an in-memory fleet registry and compared through the authenticated loopback-only private OpsChugex LocalOps Intelligence Core. No SSH, WinRM, remote shell, credential storage, lateral execution or cross-node remediation is exposed. Fleet drift is relative to an explicitly selected baseline and is not automatically an error, unauthorized change or compromise verdict. Existing controlled execution remains local and separately approval-gated."
+        "Use LocalOps tools to inspect local Windows or Linux hosts and bounded private-infrastructure snapshots. v0.9 adds read-only local VM, storage and power telemetry plus private device-health/topology analysis through the authenticated loopback-only OpsChugex LocalOps Intelligence Core. LocalOps does not perform subnet discovery, remote login, SSH, WinRM, SNMP writes, hypervisor mutation, storage mutation, lateral execution or cross-device remediation. Submitted infrastructure snapshots are evidence, not authenticated device identity or attestation. Existing controlled execution remains local and separately approval-gated."
     }
   );
 
@@ -275,6 +276,7 @@ export function createServer() {
   registerCorrelationTools(server);
   registerRootCauseTools(server);
   registerFleetTools(server);
+  registerInfrastructureTools(server);
 
   return server;
 }

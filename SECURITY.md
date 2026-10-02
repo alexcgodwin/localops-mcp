@@ -1,61 +1,62 @@
 # Security Policy
 
-## v0.8 security boundary
+## v0.9 security boundary
 
-OpsChugex LocalOps MCP v0.8 combines read-only local collection, a disabled-by-default R2 local execution gateway, optional private correlation/root-cause analysis, and snapshot-based Fleet Intelligence.
+OpsChugex LocalOps MCP v0.9 combines read-only local collection, a disabled-by-default R2 local execution gateway, private correlation/root-cause/fleet analysis, and read-only Private Infrastructure Intelligence.
 
 It does **not** expose:
 
 - arbitrary shell or arbitrary PowerShell execution
-- SSH or WinRM fleet control
-- remote credential storage
+- subnet discovery or remote port scanning
+- SSH, WinRM, remote shell or remote credential storage
+- SNMP writes or device-configuration mutation
+- hypervisor VM start/stop/create/delete actions
+- storage formatting, mounting changes or filesystem mutation
 - lateral command execution
-- process termination
-- account disabling or credential changes
-- firewall mutation
-- quarantine operations
-- arbitrary file deletion
-- event-log clearing or audit-policy mutation
-- packet capture or remote port scanning
+- process termination, account disabling or credential changes
+- firewall mutation or quarantine
+- packet capture
 - R3+ automatic execution
-- automatic cross-node remediation
+- automatic cross-node or cross-device remediation
 - public or LAN access to the private intelligence core
 
-## Fleet data minimization
+## Private infrastructure collection
 
-Fleet snapshots contain bounded normalized metadata only:
+Local infrastructure tools use fixed read-only local commands/APIs:
 
-- host metadata and health
-- software names/versions
-- patch/kernel markers
-- certificate metadata
-- service state
-- local administrator membership
-- startup registrations
-- scheduled task/timer metadata
-- summarized recent security-change counts/categories
+- Hyper-V PowerShell `Get-VM`
+- VirtualBox `VBoxManage list`
+- Proxmox `qm list`
+- libvirt `virsh list --all`
+- VMware `vmrun list`
+- local filesystem capacity
+- supported Windows physical-disk health metadata
+- Windows `Win32_Battery` or Linux UPower telemetry
 
-Raw event messages are not stored in the fleet registry.
+Unavailable providers are reported as limitations. LocalOps does not fall back to arbitrary shell execution.
 
-The registry is in-memory only, capped at 500 nodes, and cleared when the LocalOps process exits.
+## Network-device and topology analysis
 
-Registering a snapshot stores caller-supplied evidence. Registration by itself does not authenticate, attest, enroll, or establish trust in a remote endpoint.
+`network_device_health` and `private_network_topology` consume bounded caller-supplied snapshots. They do not discover, probe, authenticate to or configure infrastructure devices.
 
-## Fleet analysis semantics
+Submitted snapshots do not authenticate, enroll, attest or establish trust in a device.
 
-- every drift operation requires an explicit baseline node
-- stale snapshots and large capture-time skew are reported as limitations rather than silently compared as equally current
-- drift means difference, not automatically error, unauthorized change or compromise
-- a missing baseline patch on a target is surfaced as high-severity drift, but still requires operator validation
-- network or security metadata never authorizes remote action
-- the private fleet engine performs analysis only
-- cross-node remediation is not implemented in v0.8
+The private API validates:
 
-## Controlled execution
+- unique bounded device identifiers
+- valid timestamps
+- bounded metric ranges
+- bounded interface/tag/limitation arrays
+- link endpoints that reference submitted devices
+- bounded link counts
 
-The existing v0.5 local execution boundary remains unchanged. Execution is disabled unless `LOCALOPS_EXECUTION_ENABLED=true`, service actions require exact allowlisting, and every R2 action requires a short-lived one-time approval token plus exact `APPROVE` confirmation.
+Topology articulation results indicate dependency concentration in the submitted graph. They are not guaranteed production single points of failure.
 
-Fleet tools cannot create, reuse or bypass execution approvals for another node.
+## Fleet and execution boundaries
+
+The v0.8 fleet registry remains in-memory only and capped at 500 nodes. Fleet snapshot registration does not authenticate node identity.
+
+The v0.5 local execution gateway remains separate. Execution is disabled unless `LOCALOPS_EXECUTION_ENABLED=true`; service actions require exact allowlisting and short-lived explicit approval. Infrastructure/fleet analysis cannot create, reuse or bypass those approvals.
 
 ## Private intelligence core
 
@@ -63,4 +64,4 @@ The public client accepts only literal loopback IP endpoints, requires `LOCALOPS
 
 ## Reporting a vulnerability
 
-Use GitHub private security reporting / Security Advisories. Do not publish credentials, sensitive host/fleet data, customer evidence or proprietary intelligence behavior in a public issue.
+Use GitHub private security reporting / Security Advisories. Do not publish credentials, sensitive host/fleet/infrastructure data, customer evidence or proprietary intelligence behavior in a public issue.
