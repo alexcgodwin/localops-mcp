@@ -19,8 +19,9 @@ import {
 import { registerEndpointInventoryTools } from "./endpoint-tools.js";
 import { registerNetworkIntelligenceTools } from "./network-tools.js";
 import { registerEventEvidenceTools } from "./event-tools.js";
+import { registerControlledExecutionTools } from "./execution-tools.js";
 
-const VERSION = "0.4.0";
+const VERSION = "0.5.0";
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -76,7 +77,7 @@ export function createServer() {
     { name: "opschugex-localops-mcp", version: VERSION },
     {
       instructions:
-        "Use LocalOps tools to inspect the local Windows or Linux host. v0.4 is read-only: it includes system discovery, endpoint inventory, local network intelligence, and bounded event/security evidence collection. Never expose secret values, private-key contents, packet payloads, arbitrary shell execution, mutation or remediation. Baseline and evidence tools report observable facts and caller-baseline deviations; they must not infer compromise or root cause."
+        "Use LocalOps tools to inspect the local Windows or Linux host. v0.5 adds a disabled-by-default controlled execution gateway for a small R2 action set. All execution requires LOCALOPS_EXECUTION_ENABLED=true, service allowlisting where relevant, preflight, a five-minute one-time approval token, confirmation='APPROVE', verification and audit. Never expose secret values, private-key contents, packet payloads or arbitrary shell execution. R3+ destructive actions are not exposed in v0.5."
     }
   );
 
@@ -267,6 +268,7 @@ export function createServer() {
   registerEndpointInventoryTools(server);
   registerNetworkIntelligenceTools(server);
   registerEventEvidenceTools(server);
+  registerControlledExecutionTools(server);
 
   return server;
 }
