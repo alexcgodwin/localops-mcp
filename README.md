@@ -10,7 +10,7 @@
 
 OpsChugex LocalOps MCP is a cross-platform Model Context Protocol server for safely inspecting local Windows and Linux systems. It is designed as the local/private-infrastructure counterpart to the Cloud DevOps MCP Server.
 
-Version 0.3.0 remains intentionally read-only. In addition to system discovery and endpoint inventory, it adds local network intelligence for listeners, connections, routes, DNS, firewall state, adapters, neighbor cache and process-to-network mapping. It does not provide port scanning, packet capture, arbitrary shell execution, firewall mutation, process termination, credential reads, secret values, private-key contents, or remediation.
+Version 0.4.0 remains intentionally read-only. In addition to system, endpoint and network visibility, it adds bounded event and security evidence collection for Windows and Linux. It can surface supported login, service-install, account/group, process-audit, scheduler and Defender evidence while preserving permission/audit gaps as explicit limitations. It does not provide log deletion, audit-policy changes, arbitrary shell execution, firewall mutation, process termination, credential reads, secret values, or remediation.
 
 ## Why this exists
 
@@ -34,12 +34,18 @@ LocalOps starts at the operating-system layer:
 - adapter and ARP/neighbor-cache inventory
 - process-to-network mapping without packet contents
 - caller-baseline checks for unexpected listeners and outbound endpoints
+- bounded Windows Event Log and Linux journal evidence
+- login success/failure evidence where the host audit source permits it
+- service, account, privileged-group and scheduler change evidence
+- Microsoft Defender operational evidence on Windows
+- explicit evidence-gap reporting when permissions or audit configuration are insufficient
+- caller-baseline service-change detection
 - normalized Windows/Linux outputs
 - read-only MCP access with explicit safety boundaries
 
 The long-term goal is evidence correlation across endpoints, private infrastructure, networking, storage and virtualization while keeping advanced OpsChugex intelligence proprietary.
 
-## v0.3 tools
+## v0.4 tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -79,6 +85,20 @@ The long-term goal is evidence correlation across endpoints, private infrastruct
 | `process_network_map` | Group observed sockets by owning process |
 | `unexpected_listening_ports` | Compare listeners with a caller-supplied port baseline |
 | `unusual_outbound_connections` | Compare active TCP remotes with caller-supplied expectations |
+| `windows_event_logs` | Bounded Windows event evidence from an allowlisted log set |
+| `linux_journal_logs` | Bounded Linux journal evidence with optional unit/priority filters |
+| `security_events` | Supported security-relevant event evidence with audit limitations |
+| `login_events` | Successful login/session evidence where available |
+| `failed_logins` | Failed authentication evidence where available |
+| `service_install_events` | Windows service-install or bounded Linux service-change evidence |
+| `account_creation_events` | Local account-creation evidence |
+| `admin_group_changes` | Privileged-group membership change evidence |
+| `process_creation_events` | Audited Windows process-creation evidence; Linux remains unknown without an explicit audit source |
+| `task_scheduler_events` | Scheduled-task/timer event evidence |
+| `defender_events` | Microsoft Defender Operational evidence on Windows |
+| `recent_system_changes` | Deterministic aggregation of supported system-change evidence |
+| `recent_security_changes` | Deterministic aggregation of supported security-change evidence |
+| `detect_new_services` | Compare current service names with a caller-supplied baseline |
 
 ## Architecture
 
@@ -124,14 +144,14 @@ npm run dev
 
 ## Safety model
 
-v0.3 follows a narrow read-only model:
+v0.4 follows a narrow read-only model:
 
 ```text
 READ       allowed
 ANALYZE    allowed
 PLAN       future
-EXECUTE    not exposed in v0.3
-DESTRUCTIVE EXECUTION    not exposed in v0.3
+EXECUTE    not exposed in v0.4
+DESTRUCTIVE EXECUTION    not exposed in v0.4
 ```
 
 Important controls:
@@ -146,7 +166,11 @@ Important controls:
 - no remote port scanning
 - no packet capture or packet payload inspection
 - no firewall changes
-- "unexpected" and "outside baseline" mean only that caller-supplied expectations did not match
+- "unexpected", "outside baseline" and "new" mean only that caller-supplied expectations did not match
+- no event-log clearing or retention changes
+- no audit-policy changes
+- event messages are bounded and secret-like values are redacted
+- inaccessible logs and missing audit coverage are reported as evidence limitations rather than interpreted as clean
 - bounded list sizes
 - strict PID validation
 - strict service-name validation
@@ -180,7 +204,7 @@ Those algorithms are not included in this MIT repository.
 | 0.1 | System discovery, completed |
 | 0.2 | Endpoint inventory, completed |
 | 0.3 | Network intelligence, completed |
-| 0.4 | Event and security evidence |
+| 0.4 | Event and security evidence, completed |
 | 0.5 | Approval-gated controlled execution |
 | 0.6 | Evidence correlation |
 | 0.7 | Root-cause intelligence |
