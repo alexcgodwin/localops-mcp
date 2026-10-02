@@ -1,6 +1,7 @@
 import { appendFile, chmod, mkdir, readFile } from "node:fs/promises";
 import os from "node:os";
 import { isAbsolute, join, parse, resolve } from "node:path";
+import { databaseProfiles } from "./database.js";
 
 export type LocalOpsRole =
   | "viewer"
@@ -315,6 +316,28 @@ export function productionReadinessInput() {
       id: "data-directory",
       status: "fail",
       detail: error instanceof Error ? error.message : String(error)
+    });
+  }
+
+  try {
+    const profiles = databaseProfiles();
+    checks.push({
+      id: "database-profiles",
+      status: profiles.length > 0 ? "pass" : "warn",
+      detail:
+        profiles.length > 0
+          ? profiles.length +
+            " database profile(s) parsed successfully without embedding credentials in MCP configuration."
+          : "No database profiles are configured; v1.1 database tools remain unavailable until LOCALOPS_DATABASE_PROFILES is configured."
+    });
+  } catch (error) {
+    checks.push({
+      id: "database-profiles",
+      status: "fail",
+      detail:
+        error instanceof Error
+          ? error.message
+          : String(error)
     });
   }
 
