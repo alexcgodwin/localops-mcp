@@ -21,8 +21,9 @@ import { registerNetworkIntelligenceTools } from "./network-tools.js";
 import { registerEventEvidenceTools } from "./event-tools.js";
 import { registerControlledExecutionTools } from "./execution-tools.js";
 import { registerCorrelationTools } from "./correlation-tools.js";
+import { registerRootCauseTools } from "./root-cause-tools.js";
 
-const VERSION = "0.6.0";
+const VERSION = "0.7.0";
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -78,7 +79,7 @@ export function createServer() {
     { name: "opschugex-localops-mcp", version: VERSION },
     {
       instructions:
-        "Use LocalOps tools to inspect the local Windows or Linux host. v0.6 adds evidence correlation through an optional private OpsChugex LocalOps Intelligence Core reachable only through an authenticated loopback HTTP interface. The public MCP collects bounded normalized evidence and does not contain proprietary correlation rules. Correlation reports relationships and evidence limitations, not root-cause or compromise conclusions. v0.5 controlled execution remains disabled by default and R3+ actions remain unavailable."
+        "Use LocalOps tools to inspect the local Windows or Linux host. v0.7 adds private root-cause intelligence through the authenticated loopback-only OpsChugex LocalOps Intelligence Core. The public MCP collects bounded normalized evidence and exposes only analysis contracts; proprietary ranking, confidence, evidence-chain, trigger, blast-radius and remediation logic remains private. Root-cause outputs are hypotheses based on evidence alignment, not proof of compromise or certainty. Controlled execution remains separately approval-gated and R3+ actions remain unavailable for automatic execution."
     }
   );
 
@@ -271,6 +272,7 @@ export function createServer() {
   registerEventEvidenceTools(server);
   registerControlledExecutionTools(server);
   registerCorrelationTools(server);
+  registerRootCauseTools(server);
 
   return server;
 }

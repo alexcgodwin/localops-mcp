@@ -1,14 +1,14 @@
 # Security Policy
 
-## v0.6 security boundary
+## v0.7 security boundary
 
-OpsChugex LocalOps MCP v0.6 combines read-only collection, a disabled-by-default R2 execution gateway, and an optional private evidence-correlation service.
+OpsChugex LocalOps MCP v0.7 combines read-only collection, a disabled-by-default R2 controlled-execution gateway, and optional private evidence-correlation/root-cause analysis over an authenticated loopback interface.
 
 It does **not** expose:
 
 - arbitrary shell or arbitrary PowerShell execution
 - process termination
-- account disabling or account mutation
+- account disabling or credential changes
 - firewall mutation
 - quarantine operations
 - arbitrary file deletion
@@ -18,10 +18,10 @@ It does **not** expose:
 - remote port scanning
 - packet capture or packet payload inspection
 - credential, secret, SSH private-key or certificate private-key contents
-- R3+ execution actions
+- R3+ automatic execution
 - public or LAN access to the private intelligence core
 
-The only v0.5/v0.6 mutation actions are start/restart of explicitly allowlisted services, local DNS cache refresh, and bounded cleanup of old regular files inside the operating-system temporary directory.
+The only automatic mutation actions remain the bounded v0.5 R2 set: start/restart explicitly allowlisted services, local DNS cache refresh, and bounded cleanup of old regular files inside the operating-system temporary directory.
 
 ## Data minimization
 
@@ -37,6 +37,7 @@ LocalOps follows these minimization rules:
 - packet contents are never captured
 - caller-baseline deviations are not treated as malicious
 - inaccessible logs and missing audit coverage remain explicit evidence limitations
+- v0.7 evidence bundles add only bounded host-health and process-resource metrics
 
 ## Controlled execution
 
@@ -44,7 +45,7 @@ Execution is disabled unless `LOCALOPS_EXECUTION_ENABLED=true`.
 
 Service actions also require exact names in `LOCALOPS_ALLOWED_SERVICES`.
 
-The v0.6 execution path is:
+The execution path remains:
 
 1. validate feature enablement
 2. validate target and allowlist
@@ -52,7 +53,7 @@ The v0.6 execution path is:
 4. create a five-minute one-time approval token
 5. require exact `confirmation="APPROVE"`
 6. re-check service allowlisting
-7. execute the action
+7. execute the approved R2 action
 8. verify the result
 9. write an in-memory audit record
 10. return rollback/recovery guidance
@@ -61,22 +62,32 @@ Approval tokens are never included in audit records.
 
 ## Private intelligence core
 
-Evidence-correlation tools use the separate private OpsChugex LocalOps Intelligence Core.
+v0.6 correlation and v0.7 root-cause tools use the separate private OpsChugex LocalOps Intelligence Core.
 
 The public client:
 
-- accepts only `http` loopback endpoints
-- rejects non-loopback hostnames
+- accepts only literal loopback IP endpoints
 - requires `LOCALOPS_INTELLIGENCE_TOKEN` with at least 32 characters
 - calls only a fixed allowlist of private API routes
 - sends bounded normalized evidence
 - does not send arbitrary commands
 - does not echo authentication material in connection errors
 
-The private service binds only to `127.0.0.1` in v0.6.
+The private service binds only to `127.0.0.1`.
 
-Correlation output describes evidence relationships. It does not claim root cause, compromise or remediation decisions.
+## Root-cause semantics
+
+v0.7 analysis is deliberately non-authoritative:
+
+- ranked causes are evidence-backed hypotheses, not definitive verdicts
+- confidence measures evidence coverage/alignment, not compromise probability
+- source limitations reduce confidence
+- change triggers are temporal starting points, not proof of causation
+- blast radius is limited to observed local entities and network relationships
+- remote endpoints are not declared affected merely because a connection exists
+- remediation recommendations are advisory only
+- no recommendation authorizes or bypasses the controlled-execution gateway
 
 ## Reporting a vulnerability
 
-Please use GitHub private security reporting / Security Advisories for this repository. Do not publish credentials, exploit details, sensitive host data, private intelligence logic or customer evidence in a public issue.
+Please use GitHub private security reporting / Security Advisories for this repository. Do not publish credentials, exploit details, sensitive host data, private intelligence behavior or customer evidence in a public issue.
