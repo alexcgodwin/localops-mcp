@@ -1,0 +1,56 @@
+{
+  "name": "opschugex-localops-mcp",
+  "version": "0.1.0",
+  "description": "OpsChugex LocalOps MCP for local infrastructure, endpoint and systems intelligence on Windows and Linux.",
+  "type": "module",
+  "mcpName": "io.github.alexcgodwin/localops-mcp",
+  "bin": {
+    "opschugex-localops-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "server.json"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "check": "npm run build && npm test && npm audit --omit=dev --audit-level=high"
+  },
+  "keywords": [    "mcp",
+    "model-context-protocol",
+    "local-infrastructure",
+    "endpoint",
+    "systems",
+    "windows",
+    "linux",
+    "operations",
+    "security"
+  ],
+  "author": "Alex C. Godwin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alexcgodwin/localops-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/alexcgodwin/localops-mcp/issues"
+  },
+  "homepage": "https://github.com/alexcgodwin/localops-mcp#readme",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {    "@modelcontextprotocol/server": "^2.2.0",
+    "zod": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.2",
+    "vitest": "^5.0.3"
+  }
+}
