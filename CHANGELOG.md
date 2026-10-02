@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0
+
+- Added bounded Windows Event Log and Linux journal evidence collectors.
+- Added supported successful-login and failed-login evidence tools.
+- Added Windows service-install, account-creation, privileged-group and process-audit evidence.
+- Added scheduled-task/timer and Microsoft Defender Operational evidence.
+- Added deterministic recent-system-change and recent-security-change aggregation.
+- Added caller-baseline service detection without malicious or unauthorized labels.
+- Event messages are bounded and secret-like values are redacted.
+- Permission and audit-policy gaps are preserved as explicit evidence limitations rather than treated as zero events.
+- Linux process-creation evidence remains unknown unless an explicit audit source such as auditd or eBPF telemetry is configured.
+- v0.4 remains read-only and exposes no log clearing, audit-policy mutation, remediation or arbitrary shell tool.
+
 ## 0.3.0
 
 - Added local TCP/UDP listener and active connection inventory for Windows and Linux.
