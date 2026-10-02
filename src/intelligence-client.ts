@@ -159,7 +159,7 @@ export async function callPrivateIntelligence(
   const url = intelligenceUrl();
   const token = intelligenceToken();
 
-  if (!/^\/v1\/(correlate\/(process|service|identity|network|persistence)|timeline|root-cause\/(rank|confidence|evidence-chain|investigation|change-trigger|blast-radius|remediation)|fleet\/(compare|configuration-drift|software-drift|patch-drift|certificate-drift|security-drift))$/.test(path)) {
+  if (!/^\/v1\/(correlate\/(process|service|identity|network|persistence)|timeline|root-cause\/(rank|confidence|evidence-chain|investigation|change-trigger|blast-radius|remediation)|fleet\/(compare|configuration-drift|software-drift|patch-drift|certificate-drift|security-drift)|infrastructure\/(device-health|topology))$/.test(path)) {
     throw new Error("Unsupported private intelligence route.");
   }
 

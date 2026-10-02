@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.0
+
+- Added `virtual_machine_inventory` for locally available Hyper-V, VirtualBox, Proxmox, libvirt and VMware CLI inventory using fixed read-only commands.
+- Added `vm_health` for exact local VM ID/name state lookup without mutation.
+- Added `storage_capacity` and `storage_health` for bounded local filesystem capacity plus supported Windows physical-disk health metadata.
+- Added `ups_health` for locally exposed Windows battery/UPS or Linux UPower telemetry.
+- Added `network_device_health` for private-core analysis of bounded caller-supplied router, switch, firewall, DNS/DHCP, AP, NAS, storage, UPS, hypervisor and server snapshots.
+- Added `private_network_topology` for component, isolated-node, down-link and articulation/dependency analysis of caller-supplied topology.
+- Added strict private API validation for device IDs, timestamps, metrics, interfaces, links and per-request bounds.
+- v0.9 performs no subnet discovery, remote login, SNMP writes, remote credential collection, hypervisor mutation, storage mutation, lateral execution or cross-device remediation.
+- Submitted infrastructure snapshots are evidence only and do not authenticate or attest device identity.
+
 ## 0.8.0
 
 - Added snapshot-based Fleet Intelligence with no SSH, WinRM, remote shell, credential storage or lateral execution.
