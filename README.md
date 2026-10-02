@@ -10,7 +10,7 @@
 
 OpsChugex LocalOps MCP is a cross-platform Model Context Protocol server for safely inspecting local Windows and Linux systems. It is designed as the local/private-infrastructure counterpart to the Cloud DevOps MCP Server.
 
-Version 0.5.0 introduces a disabled-by-default Controlled Execution Gateway while preserving the read-only collectors from v0.1-v0.4. The only executable actions in v0.5 are bounded R2 operations: start an allowlisted service, restart an allowlisted service, refresh the local DNS cache, or delete a bounded number of old regular files from the operating-system temporary directory. Every execution requires enablement, preflight, a short-lived one-time approval token, exact confirmation, verification, audit output and rollback guidance. R3+ actions such as process termination, account disabling, firewall mutation, quarantine and arbitrary file deletion are not exposed.
+Version 0.6.0 adds evidence correlation through an optional private OpsChugex LocalOps Intelligence Core. The public MCP collects bounded normalized evidence and talks to the private engine only over an authenticated loopback HTTP interface. Correlation can link process, service, identity, network and persistence evidence and build chronological incident timelines without exposing the proprietary correlation implementation. v0.5 controlled execution remains disabled by default, and v0.6 still does not produce root-cause, compromise or remediation verdicts.
 
 ## Why this exists
 
@@ -44,12 +44,16 @@ LocalOps starts at the operating-system layer:
 - exact service allowlisting for service mutations
 - five-minute one-time approval tokens
 - post-action verification and in-memory audit records
+- bounded evidence bundles for private correlation
+- authenticated loopback-only private intelligence interface
+- process, service, identity, network and persistence correlation
+- chronological incident evidence timelines
 - normalized Windows/Linux outputs
-- explicit R0-R2 safety boundaries with R3+ blocked in v0.5
+- explicit R0-R2 safety boundaries with R3+ blocked
 
 The long-term goal is evidence correlation across endpoints, private infrastructure, networking, storage and virtualization while keeping advanced OpsChugex intelligence proprietary.
 
-## v0.5 tools
+## v0.6 tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -107,6 +111,13 @@ The long-term goal is evidence correlation across endpoints, private infrastruct
 | `propose_execution` | Run preflight and issue a five-minute one-time approval token without executing |
 | `execute_approved_action` | Execute exactly the action bound to a valid approval token |
 | `execution_audit_log` | Read recent in-memory execution audit records without approval tokens |
+| `intelligence_status` | Check whether the private loopback intelligence core is configured and reachable |
+| `correlate_process_activity` | Correlate bounded process, event and network evidence through the private core |
+| `correlate_service_activity` | Correlate service, process, event and network relationships |
+| `correlate_identity_activity` | Correlate local identity, admin and authentication/change evidence |
+| `correlate_network_activity` | Correlate process-to-remote-endpoint relationships without packet capture |
+| `correlate_persistence_signals` | Correlate startup, scheduled-task, service, process and event evidence |
+| `build_incident_timeline` | Build a chronological evidence timeline while preserving source limitations |
 
 ## Architecture
 
@@ -119,10 +130,11 @@ flowchart TD
     Safe --> Linux["Linux adapter"]
     Win --> PS["Fixed PowerShell/CIM reads"]
     Linux --> Proc["Fixed ps/df/systemctl reads"]
-    Server -. future opt-in .-> Core["Private OpsChugex LocalOps Intelligence Core"]
+    Server --> Client2["Loopback Intelligence Client"]
+    Client2 --> Core["Private OpsChugex LocalOps Intelligence Core"]
 ```
 
-The public MCP owns protocol handling, safe collectors, normalization and community-visible integrations. Proprietary correlation, root-cause, risk and remediation decision logic belongs in the private OpsChugex intelligence core.
+The public MCP owns protocol handling, safe collectors, normalization, evidence packaging, the loopback client and community-visible integrations. The private OpsChugex intelligence core now owns evidence-correlation behavior and incident-timeline construction. Future root-cause, confidence, risk and remediation decision logic also stays private.
 
 ## Quickstart
 
@@ -150,15 +162,27 @@ For development:
 npm run dev
 ```
 
+### Optional private correlation core
+
+The v0.6 correlation tools require the private OpsChugex LocalOps Intelligence Core to be running locally. Configure the public MCP process with:
+
+```text
+LOCALOPS_INTELLIGENCE_URL=http://127.0.0.1:43123
+LOCALOPS_INTELLIGENCE_TOKEN=<private token of at least 32 characters>
+```
+
+The public client rejects non-loopback intelligence URLs. If the private core is not configured or running, all v0.1-v0.5 capabilities continue to work and `intelligence_status` reports the limitation.
+
 ## Safety model
 
-v0.5 uses a read-first, approval-gated execution model:
+v0.6 keeps the v0.5 read-first execution model and adds a private correlation boundary:
 
 ```text
 R0 READ                     allowed
 R1 ANALYZE / EVIDENCE       allowed
 R2 BOUNDED EXECUTION         disabled by default; explicit approval required
-R3+ HIGHER-RISK EXECUTION    not exposed in v0.5
+R3+ HIGHER-RISK EXECUTION    not exposed
+PRIVATE CORRELATION           loopback-only, authenticated, read-only
 ```
 
 Important controls:
@@ -185,7 +209,13 @@ Important controls:
 - execution requires `confirmation="APPROVE"`
 - service allowlisting is checked again immediately before execution
 - temporary cleanup is restricted to old regular files inside the OS temp directory, with bounded age/count controls
-- R3+ actions are intentionally absent from the public v0.5 server
+- R3+ actions are intentionally absent from the public server
+- private intelligence URL is restricted to explicit loopback addresses
+- private-core authentication requires a token of at least 32 characters
+- private API routes are allowlisted in the public client
+- correlation requests contain bounded normalized evidence, not arbitrary commands
+- private-core connection errors do not echo authentication material
+- correlation reports relationships and evidence gaps, not root-cause or compromise conclusions
 - bounded list sizes
 - strict PID validation
 - strict service-name validation
@@ -199,18 +229,9 @@ Some platform collectors may require local permission to inspect specific proces
 
 This repository is the public implementation and portfolio-facing gateway.
 
-The separate private **OpsChugex LocalOps Intelligence Core** is reserved for future proprietary capabilities such as:
+The separate private **OpsChugex LocalOps Intelligence Core** now implements v0.6 evidence correlation and incident timelines. Future private capabilities include root-cause ranking, confidence models, anomaly detection, risk evaluation, remediation decision logic and fleet-level intelligence.
 
-- evidence correlation
-- incident timelines
-- root-cause ranking
-- confidence models
-- anomaly detection
-- risk evaluation
-- remediation decision logic
-- fleet-level intelligence
-
-Those algorithms are not included in this MIT repository.
+The public repository contains only the evidence contracts and loopback client. Proprietary correlation algorithms are not included in this MIT repository.
 
 ## Roadmap
 
@@ -221,7 +242,7 @@ Those algorithms are not included in this MIT repository.
 | 0.3 | Network intelligence, completed |
 | 0.4 | Event and security evidence, completed |
 | 0.5 | Approval-gated controlled execution, completed |
-| 0.6 | Evidence correlation |
+| 0.6 | Evidence correlation, completed |
 | 0.7 | Root-cause intelligence |
 | 0.8 | Fleet intelligence |
 | 0.9 | Private infrastructure and virtualization |

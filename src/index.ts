@@ -20,8 +20,9 @@ import { registerEndpointInventoryTools } from "./endpoint-tools.js";
 import { registerNetworkIntelligenceTools } from "./network-tools.js";
 import { registerEventEvidenceTools } from "./event-tools.js";
 import { registerControlledExecutionTools } from "./execution-tools.js";
+import { registerCorrelationTools } from "./correlation-tools.js";
 
-const VERSION = "0.5.0";
+const VERSION = "0.6.0";
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -77,7 +78,7 @@ export function createServer() {
     { name: "opschugex-localops-mcp", version: VERSION },
     {
       instructions:
-        "Use LocalOps tools to inspect the local Windows or Linux host. v0.5 adds a disabled-by-default controlled execution gateway for a small R2 action set. All execution requires LOCALOPS_EXECUTION_ENABLED=true, service allowlisting where relevant, preflight, a five-minute one-time approval token, confirmation='APPROVE', verification and audit. Never expose secret values, private-key contents, packet payloads or arbitrary shell execution. R3+ destructive actions are not exposed in v0.5."
+        "Use LocalOps tools to inspect the local Windows or Linux host. v0.6 adds evidence correlation through an optional private OpsChugex LocalOps Intelligence Core reachable only through an authenticated loopback HTTP interface. The public MCP collects bounded normalized evidence and does not contain proprietary correlation rules. Correlation reports relationships and evidence limitations, not root-cause or compromise conclusions. v0.5 controlled execution remains disabled by default and R3+ actions remain unavailable."
     }
   );
 
@@ -269,6 +270,7 @@ export function createServer() {
   registerNetworkIntelligenceTools(server);
   registerEventEvidenceTools(server);
   registerControlledExecutionTools(server);
+  registerCorrelationTools(server);
 
   return server;
 }
