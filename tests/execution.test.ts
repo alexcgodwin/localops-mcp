@@ -9,6 +9,9 @@ import {
 
 const previousExecution = process.env.LOCALOPS_EXECUTION_ENABLED;
 const previousServices = process.env.LOCALOPS_ALLOWED_SERVICES;
+const previousRole = process.env.LOCALOPS_ROLE;
+const previousOperator = process.env.LOCALOPS_OPERATOR_ID;
+const previousAudit = process.env.LOCALOPS_AUDIT_PERSISTENCE;
 
 function restoreEnv() {
   if (previousExecution === undefined) {
@@ -22,6 +25,15 @@ function restoreEnv() {
   } else {
     process.env.LOCALOPS_ALLOWED_SERVICES = previousServices;
   }
+
+  if (previousRole === undefined) delete process.env.LOCALOPS_ROLE;
+  else process.env.LOCALOPS_ROLE = previousRole;
+
+  if (previousOperator === undefined) delete process.env.LOCALOPS_OPERATOR_ID;
+  else process.env.LOCALOPS_OPERATOR_ID = previousOperator;
+
+  if (previousAudit === undefined) delete process.env.LOCALOPS_AUDIT_PERSISTENCE;
+  else process.env.LOCALOPS_AUDIT_PERSISTENCE = previousAudit;
 }
 
 function windowsServiceRunner(): CommandRunner {
@@ -60,6 +72,9 @@ describe("controlled execution policy", () => {
   beforeEach(() => {
     delete process.env.LOCALOPS_EXECUTION_ENABLED;
     delete process.env.LOCALOPS_ALLOWED_SERVICES;
+    process.env.LOCALOPS_ROLE = "maintainer";
+    process.env.LOCALOPS_OPERATOR_ID = "test-maintainer";
+    delete process.env.LOCALOPS_AUDIT_PERSISTENCE;
   });
 
   afterEach(() => {
@@ -119,6 +134,9 @@ describe("approval-gated execution", () => {
   beforeEach(() => {
     process.env.LOCALOPS_EXECUTION_ENABLED = "true";
     process.env.LOCALOPS_ALLOWED_SERVICES = "DemoService";
+    process.env.LOCALOPS_ROLE = "maintainer";
+    process.env.LOCALOPS_OPERATOR_ID = "test-maintainer";
+    delete process.env.LOCALOPS_AUDIT_PERSISTENCE;
   });
 
   afterEach(() => {

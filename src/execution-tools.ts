@@ -41,11 +41,14 @@ export function registerControlledExecutionTools(server: McpServer) {
     {
       title: "Controlled Execution Status",
       description:
-        "Show whether host mutation is enabled, the service allowlist, supported v0.5 actions, approval TTL and risk-policy boundary.",
+        "Show whether host mutation is enabled, the process-bound v1.0 role/operator identity, durable-audit state, service allowlist, approval TTL and execution risk boundary.",
       annotations: readOnlyAnnotations,
       inputSchema: z.object({}),
       outputSchema: z.object({
         enabled: z.boolean(),
+        operatorId: z.string(),
+        role: z.enum(["viewer", "operator", "maintainer", "admin"]),
+        durableAuditEnabled: z.boolean(),
         approvalTtlSeconds: z.number(),
         allowedServices: z.array(z.string()),
         supportedActions: z.array(
@@ -73,7 +76,7 @@ export function registerControlledExecutionTools(server: McpServer) {
     {
       title: "Propose Controlled Execution",
       description:
-        "Run preflight checks and create a five-minute one-time approval token for one bounded v0.5 action. This tool does not execute the action.",
+        "Run preflight checks and create a five-minute one-time approval token for one bounded R2 action. v1.0 RBAC requires operator, maintainer or admin. This tool does not execute the action.",
       annotations: proposalAnnotations,
       inputSchema: z.object({
         action: z.enum([
@@ -121,7 +124,7 @@ export function registerControlledExecutionTools(server: McpServer) {
     {
       title: "Execute Approved Action",
       description:
-        "Consume one valid v0.5 approval token and execute exactly the action bound to it. Requires confirmation='APPROVE'. Tokens are one-time and expire after five minutes.",
+        "Consume one valid approval token and execute exactly the bound R2 action. v1.0 RBAC requires maintainer or admin, confirmation='APPROVE', and the existing enablement/allowlist checks.",
       annotations: executionAnnotations,
       inputSchema: z.object({
         approvalToken: z.string().min(32).max(128),
@@ -140,7 +143,12 @@ export function registerControlledExecutionTools(server: McpServer) {
         verified: z.boolean(),
         result: z.unknown(),
         rollback: z.string(),
-        auditId: z.string()
+        auditId: z.string(),
+        durableAudit: z.object({
+          enabled: z.boolean(),
+          persisted: z.boolean(),
+          limitation: z.string().nullable()
+        })
       })
     },
     async ({ approvalToken, confirmation }) =>
@@ -157,7 +165,7 @@ export function registerControlledExecutionTools(server: McpServer) {
     {
       title: "Controlled Execution Audit Log",
       description:
-        "Return recent in-memory v0.5 execution audit records. The audit log contains action/result summaries and no approval tokens.",
+        "Return recent in-memory execution audit records with v1.0 operator/role metadata. Approval tokens are never included; durable metadata-only audit is available separately when enabled.",
       annotations: readOnlyAnnotations,
       inputSchema: z.object({
         limit: z.number().int().min(1).max(200).optional()
@@ -167,6 +175,8 @@ export function registerControlledExecutionTools(server: McpServer) {
           z.object({
             id: z.string(),
             timestamp: z.string(),
+            operatorId: z.string(),
+            role: z.enum(["viewer", "operator", "maintainer", "admin"]),
             action: z.enum([
               "start_service",
               "restart_service",

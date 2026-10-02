@@ -10,7 +10,7 @@
 
 OpsChugex LocalOps MCP is a cross-platform Model Context Protocol server for safely inspecting local Windows and Linux systems. It is designed as the local/private-infrastructure counterpart to the Cloud DevOps MCP Server.
 
-Version 0.9.0 extends LocalOps into Private Infrastructure Intelligence. The public MCP adds read-only local virtualization, storage-capacity/health and local battery/UPS telemetry, while bounded caller-supplied private-infrastructure snapshots can be analyzed for device health and network topology through the private OpsChugex LocalOps Intelligence Core. v0.9 does not perform subnet discovery, remote login, SNMP writes, hypervisor/storage mutation, lateral execution or cross-device remediation.
+Version 1.0.0 turns LocalOps into a production-oriented operations platform. It adds process-bound RBAC, enforced policy evaluation, production readiness checks, and optional metadata-only durable execution auditing while preserving the existing approval-gated local execution model. Collection, correlation, root-cause, fleet and private-infrastructure intelligence remain available, and R3+ execution, remote shell, SSH/WinRM fleet control, hypervisor/storage mutation, lateral execution and cross-device remediation remain unavailable.
 
 ## Why this exists
 
@@ -71,7 +71,7 @@ LocalOps starts at the operating-system layer:
 
 The long-term goal is evidence correlation across endpoints, private infrastructure, networking, storage and virtualization while keeping advanced OpsChugex intelligence proprietary.
 
-## v0.9 tools
+## v1.0 tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -162,6 +162,11 @@ The long-term goal is evidence correlation across endpoints, private infrastruct
 | `ups_health` | Read locally exposed Windows battery/UPS or Linux UPower telemetry |
 | `network_device_health` | Analyze bounded caller-supplied private-device snapshots through the private core |
 | `private_network_topology` | Analyze caller-supplied private-infrastructure nodes/links without discovery or probing |
+| `platform_status` | Show v1.0 transport, process-bound identity/role, execution state, durable-audit state and private-core reachability |
+| `policy_status` | Show RBAC permissions and the enforced R0-R3+ boundary |
+| `evaluate_policy` | Evaluate one operation/risk tier without executing anything |
+| `production_readiness` | Check runtime, RBAC, execution/audit coherence, data-directory safety and private-core reachability |
+| `production_audit_log` | Read metadata-only durable execution audit records when enabled |
 
 ## Architecture
 
@@ -178,7 +183,7 @@ flowchart TD
     Client2 --> Core["Private OpsChugex LocalOps Intelligence Core"]
 ```
 
-The public MCP owns protocol handling, safe collectors, normalized node/fleet/infrastructure schemas, local virtualization/storage/power adapters, the in-memory fleet registry, the loopback client and operator-facing tools. The private OpsChugex intelligence core owns correlation, root-cause ranking, fleet drift, private device-health reasoning and topology analysis.
+The public MCP owns protocol handling, safe collectors, normalized node/fleet/infrastructure schemas, local virtualization/storage/power adapters, the in-memory fleet registry, process-bound RBAC/policy enforcement, local execution approvals, optional durable audit storage, the loopback client and operator-facing tools. The private OpsChugex intelligence core owns correlation, root-cause ranking, fleet drift, private device-health reasoning and topology analysis.
 
 ## Quickstart
 
@@ -215,11 +220,24 @@ LOCALOPS_INTELLIGENCE_URL=http://127.0.0.1:43123
 LOCALOPS_INTELLIGENCE_TOKEN=<private token of at least 32 characters>
 ```
 
-The public client rejects non-loopback intelligence URLs. If the private core is not configured or running, all v0.1-v0.5 local collection/execution capabilities continue to work and `intelligence_status` reports the limitation.
+The public client rejects non-loopback intelligence URLs. If the private core is not configured or running, local collection and policy/readiness tools continue to work and private-analysis tools report the limitation.
+
+### v1.0 production controls
+
+The local stdio process uses process-bound RBAC:
+
+```text
+LOCALOPS_ROLE=viewer|operator|maintainer|admin
+LOCALOPS_OPERATOR_ID=<local operator/process identity>
+LOCALOPS_AUDIT_PERSISTENCE=true|false
+LOCALOPS_DATA_DIR=<optional absolute non-root directory>
+```
+
+The default role is `viewer`. `operator` may create R2 proposals, while `maintainer` and `admin` may execute an otherwise valid R2 approval. R3+ execution remains unavailable. Durable audit is optional for read-only deployments but `production_readiness` reports execution without durable audit as blocked.
 
 ## Safety model
 
-v0.9 keeps the v0.5 local execution boundary and extends read-only visibility into private infrastructure:
+v1.0 keeps the local approval-gated execution boundary and adds enforced RBAC/policy plus production audit/readiness controls:
 
 ```text
 R0 READ                     allowed
@@ -229,6 +247,8 @@ R3+ HIGHER-RISK EXECUTION    not exposed
 PRIVATE INTELLIGENCE          loopback-only, authenticated, analysis-only
 FLEET SNAPSHOTS               bounded, in-memory, no remote control
 PRIVATE INFRASTRUCTURE         local reads + caller-supplied snapshots only
+RBAC / POLICY                  process-bound, enforced for execution
+DURABLE AUDIT                  optional metadata-only local JSONL
 ```
 
 Important controls:
@@ -249,6 +269,11 @@ Important controls:
 - event messages are bounded and secret-like values are redacted
 - inaccessible logs and missing audit coverage are reported as evidence limitations rather than interpreted as clean
 - execution is disabled unless `LOCALOPS_EXECUTION_ENABLED=true`
+- least-privileged default role is `viewer`
+- R2 proposals require `operator`, `maintainer`, or `admin`
+- R2 execution requires `maintainer` or `admin`
+- durable audit records contain execution metadata only, never approval tokens or command output
+- `production_readiness` blocks a production-ready result when execution is enabled without durable audit
 - service actions require the exact service name in `LOCALOPS_ALLOWED_SERVICES`
 - proposals perform preflight but do not execute
 - approval tokens expire after five minutes and are one-time use
@@ -312,7 +337,7 @@ The public repository contains safe collection, bounded snapshots, schemas, loca
 | 0.7 | Root-cause intelligence, completed |
 | 0.8 | Fleet intelligence, completed |
 | 0.9 | Private infrastructure and virtualization, completed |
-| 1.0 | Production LocalOps platform |
+| 1.0 | Production LocalOps platform, completed |
 
 ## Development principles
 
