@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.alexcgodwin/localops-mcp",
   "title": "OpsChugex LocalOps MCP",
-  "description": "Local infrastructure, endpoint, network and event intelligence with approval-gated execution plus optional private correlation and root-cause analysis for Windows and Linux.",
-  "version": "0.7.0",
+  "description": "Local infrastructure and endpoint intelligence with approval-gated local execution, private root-cause analysis and snapshot-based fleet drift for Windows and Linux.",
+  "version": "0.8.0",
   "repository": {
     "url": "https://github.com/alexcgodwin/localops-mcp",
     "source": "github",
@@ -13,7 +13,7 @@
     {
       "registryType": "npm",
       "identifier": "opschugex-localops-mcp",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "transport": {
         "type": "stdio"
       }

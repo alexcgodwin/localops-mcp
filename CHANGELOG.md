@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.8.0
+
+- Added snapshot-based Fleet Intelligence with no SSH, WinRM, remote shell, credential storage or lateral execution.
+- Added `capture_node_snapshot` and `register_node` for bounded normalized fleet snapshots.
+- Added `list_nodes`, `node_health`, `fleet_health` and `fleet_inventory`.
+- Added private-core `compare_nodes`, `configuration_drift`, `software_drift`, `patch_drift`, `certificate_drift` and `security_drift`.
+- Fleet drift requires an explicitly selected baseline node.
+- Fleet snapshots store summarized security-change categories/counts, not raw event messages.
+- Added bounded Windows hotfix and Linux kernel/package patch markers for patch drift.
+- Fleet registry is in-memory only and stores at most 500 nodes.
+- Snapshot registration does not authenticate or attest node identity.
+- Stale snapshots and large capture-time skew are surfaced as analysis limitations.
+- Drift findings describe differences and do not automatically mean error, unauthorized change or compromise.
+- Cross-node automatic remediation remains unavailable; existing controlled execution remains local and approval-gated.
+
 ## 0.7.0
 
 - Added seven root-cause intelligence MCP tools: `rank_probable_causes`, `calculate_confidence`, `build_evidence_chain`, `suggest_investigation_path`, `identify_change_trigger`, `identify_blast_radius` and `recommend_remediation`.

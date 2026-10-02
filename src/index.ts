@@ -22,8 +22,9 @@ import { registerEventEvidenceTools } from "./event-tools.js";
 import { registerControlledExecutionTools } from "./execution-tools.js";
 import { registerCorrelationTools } from "./correlation-tools.js";
 import { registerRootCauseTools } from "./root-cause-tools.js";
+import { registerFleetTools } from "./fleet-tools.js";
 
-const VERSION = "0.7.0";
+const VERSION = "0.8.0";
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -79,7 +80,7 @@ export function createServer() {
     { name: "opschugex-localops-mcp", version: VERSION },
     {
       instructions:
-        "Use LocalOps tools to inspect the local Windows or Linux host. v0.7 adds private root-cause intelligence through the authenticated loopback-only OpsChugex LocalOps Intelligence Core. The public MCP collects bounded normalized evidence and exposes only analysis contracts; proprietary ranking, confidence, evidence-chain, trigger, blast-radius and remediation logic remains private. Root-cause outputs are hypotheses based on evidence alignment, not proof of compromise or certainty. Controlled execution remains separately approval-gated and R3+ actions remain unavailable for automatic execution."
+        "Use LocalOps tools to inspect local Windows or Linux hosts. v0.8 adds snapshot-based Fleet Intelligence: bounded node snapshots can be registered in an in-memory fleet registry and compared through the authenticated loopback-only private OpsChugex LocalOps Intelligence Core. No SSH, WinRM, remote shell, credential storage, lateral execution or cross-node remediation is exposed. Fleet drift is relative to an explicitly selected baseline and is not automatically an error, unauthorized change or compromise verdict. Existing controlled execution remains local and separately approval-gated."
     }
   );
 
@@ -273,6 +274,7 @@ export function createServer() {
   registerControlledExecutionTools(server);
   registerCorrelationTools(server);
   registerRootCauseTools(server);
+  registerFleetTools(server);
 
   return server;
 }
