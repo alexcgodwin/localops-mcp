@@ -10,7 +10,7 @@
 
 OpsChugex LocalOps MCP is a cross-platform Model Context Protocol server for safely inspecting local Windows and Linux systems. It is designed as the local/private-infrastructure counterpart to the Cloud DevOps MCP Server.
 
-Version 1.0.0 turns LocalOps into a production-oriented operations platform. It adds process-bound RBAC, enforced policy evaluation, production readiness checks, and optional metadata-only durable execution auditing while preserving the existing approval-gated local execution model. Collection, correlation, root-cause, fleet and private-infrastructure intelligence remain available, and R3+ execution, remote shell, SSH/WinRM fleet control, hypervisor/storage mutation, lateral execution and cross-device remediation remain unavailable.
+Version 1.1.0 adds Database Intelligence to the production LocalOps platform. PostgreSQL, MySQL/MariaDB, SQL Server and Redis can be inspected through named environment-configured profiles and fixed read-only telemetry queries. Database health, replication, contention and workload-pressure reasoning run through the private OpsChugex LocalOps Intelligence Core. Passwords, connection strings, arbitrary SQL, query text, write operations and transaction termination are not exposed through MCP.
 
 ## Why this exists
 
@@ -66,12 +66,16 @@ LocalOps starts at the operating-system layer:
 - local Windows battery/UPS or Linux UPower telemetry
 - private network-device health from caller-supplied snapshots
 - private topology components, isolated nodes, down links and articulation/dependency concentration
+- named database profiles without credential exposure
+- PostgreSQL, MySQL/MariaDB, SQL Server and Redis read-only telemetry
+- normalized database inventory, connection, capacity, replication, lock and workload-pressure evidence
+- private database health, replication, contention and pressure reasoning
 - normalized Windows/Linux outputs
 - explicit R0-R2 safety boundaries with R3+ blocked
 
 The long-term goal is evidence correlation across endpoints, private infrastructure, networking, storage and virtualization while keeping advanced OpsChugex intelligence proprietary.
 
-## v1.0 tools
+## v1.1 tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -167,6 +171,14 @@ The long-term goal is evidence correlation across endpoints, private infrastruct
 | `evaluate_policy` | Evaluate one operation/risk tier without executing anything |
 | `production_readiness` | Check runtime, RBAC, execution/audit coherence, data-directory safety and private-core reachability |
 | `production_audit_log` | Read metadata-only durable execution audit records when enabled |
+| `database_profiles` | List configured database profile metadata without password values or secret-environment names |
+| `database_snapshot` | Collect a bounded normalized read-only snapshot using fixed engine telemetry queries |
+| `database_health` | Analyze operational database health through the private intelligence core |
+| `database_capacity` | Return database-size or memory-capacity evidence without inventing free-space risk |
+| `database_connection_summary` | Return bounded active/total/max/blocked connection evidence |
+| `database_replication_health` | Analyze replication role/state/lag evidence without assuming standalone databases are unhealthy |
+| `database_lock_summary` | Analyze waiting-lock/blocked-connection contention without terminating transactions |
+| `database_query_pressure` | Analyze connection utilization and workload-pressure evidence without collecting query text |
 
 ## Architecture
 
@@ -183,7 +195,7 @@ flowchart TD
     Client2 --> Core["Private OpsChugex LocalOps Intelligence Core"]
 ```
 
-The public MCP owns protocol handling, safe collectors, normalized node/fleet/infrastructure schemas, local virtualization/storage/power adapters, the in-memory fleet registry, process-bound RBAC/policy enforcement, local execution approvals, optional durable audit storage, the loopback client and operator-facing tools. The private OpsChugex intelligence core owns correlation, root-cause ranking, fleet drift, private device-health reasoning and topology analysis.
+The public MCP owns protocol handling, safe collectors, normalized node/fleet/infrastructure/database schemas, fixed read-only database adapters, local virtualization/storage/power adapters, the in-memory fleet registry, process-bound RBAC/policy enforcement, local execution approvals, optional durable audit storage, the loopback client and operator-facing tools. The private OpsChugex intelligence core owns correlation, root-cause ranking, fleet drift, private device-health/topology reasoning and database health/replication/contention/pressure analysis.
 
 ## Quickstart
 
@@ -235,9 +247,24 @@ LOCALOPS_DATA_DIR=<optional absolute non-root directory>
 
 The default role is `viewer`. `operator` may create R2 proposals, while `maintainer` and `admin` may execute an otherwise valid R2 approval. R3+ execution remains unavailable. Durable audit is optional for read-only deployments but `production_readiness` reports execution without durable audit as blocked.
 
+### v1.1 database profiles
+
+Database tools use named profiles from `LOCALOPS_DATABASE_PROFILES`. Profiles contain connection metadata only. Password values are referenced through separate environment variables and are never accepted as MCP tool arguments.
+
+Example:
+
+```text
+LOCALOPS_DATABASE_PROFILES=[{"id":"pg-main","engine":"postgresql","host":"127.0.0.1","port":5432,"database":"app","user":"localops_reader","passwordEnv":"LOCALOPS_DB_PG_MAIN_PASSWORD","tls":true}]
+LOCALOPS_DB_PG_MAIN_PASSWORD=<secret value>
+```
+
+Supported engines are `postgresql`, `mysql` (including MariaDB-compatible telemetry), `sqlserver`, and `redis`.
+
+SQL Server may use `"integratedAuth":true` instead of a password environment variable. Database profile parsing is included in `production_readiness`.
+
 ## Safety model
 
-v1.0 keeps the local approval-gated execution boundary and adds enforced RBAC/policy plus production audit/readiness controls:
+v1.1 keeps the local approval-gated execution boundary, production RBAC/audit controls, and adds read-only database telemetry through named profiles:
 
 ```text
 R0 READ                     allowed
@@ -249,6 +276,7 @@ FLEET SNAPSHOTS               bounded, in-memory, no remote control
 PRIVATE INFRASTRUCTURE         local reads + caller-supplied snapshots only
 RBAC / POLICY                  process-bound, enforced for execution
 DURABLE AUDIT                  optional metadata-only local JSONL
+DATABASE INTELLIGENCE          fixed read-only queries, named profiles only
 ```
 
 Important controls:
@@ -307,6 +335,14 @@ Important controls:
 - private-infrastructure snapshots do not authenticate or attest device identity
 - topology is derived only from submitted nodes/links and is not active discovery
 - articulation nodes indicate dependency concentration in submitted topology, not guaranteed production single points of failure
+- database tools accept profile IDs only, not connection strings or arbitrary SQL
+- database passwords are referenced through separate environment variables and are never returned in profile metadata
+- fixed database telemetry queries do not collect application query text
+- no INSERT, UPDATE, DELETE, DDL, transaction termination, failover or database-configuration mutation is exposed
+- database health is operational evidence, not proof of data integrity, application correctness or compromise
+- standalone or intentionally non-replicated databases are not automatically treated as unhealthy
+- capacity values do not invent free disk space or growth risk when the engine does not expose those facts
+- malformed database profile configuration is surfaced by production readiness
 - bounded list sizes
 - strict PID validation
 - strict service-name validation
@@ -320,9 +356,9 @@ Some platform collectors may require local permission to inspect specific proces
 
 This repository is the public implementation and portfolio-facing gateway.
 
-The separate private **OpsChugex LocalOps Intelligence Core** implements v0.6 correlation, v0.7 root-cause intelligence, v0.8 fleet drift and v0.9 private device-health/topology reasoning. Future private capabilities include predictive health, deeper cross-node incident correlation and orchestration.
+The separate private **OpsChugex LocalOps Intelligence Core** implements v0.6 correlation, v0.7 root-cause intelligence, v0.8 fleet drift, v0.9 private device-health/topology reasoning and v1.1 database health/replication/contention/pressure analysis. Future private capabilities include predictive health, deeper cross-node/cross-service incident correlation and orchestration.
 
-The public repository contains safe collection, bounded snapshots, schemas, local infrastructure adapters, the in-memory fleet registry and the loopback client. Proprietary correlation, ranking, drift and topology-reasoning algorithms are not included in this MIT repository.
+The public repository contains safe collection, bounded snapshots, schemas, fixed read-only database adapters, local infrastructure adapters, the in-memory fleet registry and the loopback client. Proprietary correlation, ranking, drift, topology and database-analysis algorithms are not included in this MIT repository.
 
 ## Roadmap
 
@@ -338,6 +374,8 @@ The public repository contains safe collection, bounded snapshots, schemas, loca
 | 0.8 | Fleet intelligence, completed |
 | 0.9 | Private infrastructure and virtualization, completed |
 | 1.0 | Production LocalOps platform, completed |
+| 1.1 | Database intelligence, completed |
+| 1.2 | Storage and backup intelligence |
 
 ## Development principles
 

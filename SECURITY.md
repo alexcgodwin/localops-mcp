@@ -1,54 +1,73 @@
 # Security Policy
 
-## v1.0 production boundary
+## v1.1 production boundary
 
-OpsChugex LocalOps MCP v1.0 remains a local stdio MCP server. It adds process-bound RBAC, enforced policy evaluation, production readiness checks, and optional metadata-only durable execution auditing.
+OpsChugex LocalOps MCP v1.1 remains a local stdio MCP server. It preserves the v1.0 process-bound RBAC, policy evaluation, production readiness and optional metadata-only durable execution audit, and adds read-only Database Intelligence.
 
-It does **not** expose arbitrary shell/PowerShell, SSH/WinRM fleet control, remote credential storage, subnet discovery, SNMP writes, hypervisor/storage mutation, lateral execution, cross-device remediation, or R3+ automatic execution.
+It does **not** expose arbitrary shell/PowerShell, SSH/WinRM fleet control, subnet discovery, SNMP writes, hypervisor/storage mutation, lateral execution, cross-device remediation, R3+ automatic execution, arbitrary SQL, database write operations, transaction termination, failover, or database configuration mutation.
 
-## RBAC
+## Database credential boundary
 
-Supported roles:
+Database tools accept a validated profile ID only.
+
+Profiles are defined in `LOCALOPS_DATABASE_PROFILES` and may reference a separate password environment variable using `passwordEnv`.
+
+The database layer:
+
+- never accepts password values as MCP arguments
+- never accepts connection strings as MCP arguments
+- never returns password values
+- never returns secret environment-variable names through `database_profiles`
+- passes supported client credentials through child-process environment variables rather than command-line password arguments
+- redacts configured credential values from database client stdout/stderr before errors are returned
+- rejects malformed profile IDs, host metadata, ports and credential-environment names
+- caps profile count at 50
+
+Supported engines are PostgreSQL, MySQL/MariaDB, SQL Server and Redis.
+
+## Database query boundary
+
+All database telemetry statements are fixed in code.
+
+LocalOps does not expose:
+
+- arbitrary SQL
+- application query text
+- INSERT, UPDATE, DELETE or DDL
+- KILL/terminate session or transaction operations
+- backup/restore commands
+- failover or replication-control commands
+- database user/role mutation
+
+Permission failures and unsupported telemetry are returned as limitations.
+
+## RBAC and controlled execution
+
+The v1.0 role model remains unchanged:
 
 - `viewer`: R0/R1 inspection and analysis
 - `operator`: R0/R1 plus R2 proposal creation
 - `maintainer`: R0/R1 plus R2 proposal and approved execution
-- `admin`: same R2 execution boundary as maintainer; R3+ remains unavailable
+- `admin`: same R2 execution boundary as maintainer
 
-The default role is `viewer`.
+R3+ remains unavailable.
 
-RBAC identity is process-bound configuration for the local stdio process. It is not a remote multi-user authentication system.
-
-## Controlled execution
-
-Execution still requires all of the following:
-
-1. `LOCALOPS_EXECUTION_ENABLED=true`
-2. sufficient RBAC role
-3. exact service allowlisting where applicable
-4. preflight
-5. five-minute one-time approval token
-6. exact `confirmation="APPROVE"`
-7. execution verification
-8. audit record
-9. rollback/recovery guidance
+Database Intelligence is read-only R0/R1 analysis and cannot create or consume local execution approvals.
 
 ## Durable audit
 
-When `LOCALOPS_AUDIT_PERSISTENCE=true`, LocalOps appends metadata-only JSONL records under `LOCALOPS_DATA_DIR` or the default local application directory.
-
-Durable records include operator ID, role, action, target, risk tier, approval/execution/verification state, and outcome. They do not contain approval tokens or command output.
-
-Production readiness reports execution without durable audit as blocked.
+When `LOCALOPS_AUDIT_PERSISTENCE=true`, LocalOps writes metadata-only JSONL execution audit records. Database credentials, query output and approval tokens are not written to the durable execution audit.
 
 ## Private intelligence
 
-The separate intelligence core remains bearer-authenticated and loopback-only. Public client routes are allowlisted and non-loopback private-core URLs are rejected.
+The private intelligence core remains bearer-authenticated and loopback-only. Public client routes are allowlisted and non-loopback private-core URLs are rejected.
+
+Database health, replication, contention and pressure outputs are operational evidence summaries. They are not proof of data integrity, application correctness or compromise.
 
 ## Data minimization
 
-Existing data-minimization rules remain: no environment values, no private-key contents, no process command lines, no startup/scheduled-task commands, no packet payloads, bounded event text, and explicit evidence limitations.
+Existing minimization rules remain: no environment values, private-key contents, process command lines, startup/scheduled-task commands or packet payloads. Database collection does not return application query text.
 
 ## Reporting
 
-Use GitHub private security reporting / Security Advisories. Do not publish credentials, sensitive host/fleet data, customer evidence, or proprietary intelligence behavior in a public issue.
+Use GitHub private security reporting / Security Advisories. Do not publish credentials, database snapshots, customer evidence, or proprietary intelligence behavior in a public issue.

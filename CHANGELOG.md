@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.0
+
+- Added Database Intelligence for PostgreSQL, MySQL/MariaDB, SQL Server and Redis.
+- Added named database profiles through `LOCALOPS_DATABASE_PROFILES`; MCP tools accept profile IDs only.
+- Added `database_profiles`, `database_snapshot`, `database_health`, `database_capacity`, `database_connection_summary`, `database_replication_health`, `database_lock_summary` and `database_query_pressure`.
+- Database credentials are referenced through separate environment variables and are never returned in profile metadata or passed as MCP arguments.
+- Added fixed read-only engine telemetry queries for version/inventory, connections, capacity, replication, locks/contention and workload pressure.
+- Added private-core database health, replication, contention and pressure analysis.
+- Added database-profile validation to `production_readiness`.
+- No arbitrary SQL, connection strings, query text, write statements, DDL, transaction termination, failover or database-configuration mutation is exposed.
+- Missing permissions or unsupported engine telemetry are preserved as explicit limitations rather than treated as healthy/zero state.
+
 ## 1.0.0
 
 - Added process-bound RBAC roles: `viewer`, `operator`, `maintainer`, and `admin`.

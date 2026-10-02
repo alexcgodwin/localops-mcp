@@ -25,8 +25,9 @@ import { registerRootCauseTools } from "./root-cause-tools.js";
 import { registerFleetTools } from "./fleet-tools.js";
 import { registerInfrastructureTools } from "./infrastructure-tools.js";
 import { registerPlatformTools } from "./platform-tools.js";
+import { registerDatabaseTools } from "./database-tools.js";
 
-const VERSION = "1.0.0";
+const VERSION = "1.1.0";
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -82,7 +83,7 @@ export function createServer() {
     { name: "opschugex-localops-mcp", version: VERSION },
     {
       instructions:
-        "OpsChugex LocalOps v1.0 is a production-oriented local operations platform for Windows and Linux. The public MCP remains local stdio and now enforces process-bound RBAC for controlled execution, exposes production readiness/policy status, and supports optional metadata-only durable execution auditing. Existing collection, correlation, root-cause, fleet and private-infrastructure analysis remain available. R3+ execution, remote shell, SSH/WinRM control, subnet discovery, hypervisor/storage mutation, lateral execution and cross-device remediation remain unavailable."
+        "OpsChugex LocalOps v1.1 adds read-only Database Intelligence for PostgreSQL, MySQL/MariaDB, SQL Server and Redis on top of the production v1.0 platform. Database access is limited to configured named profiles and fixed telemetry queries; passwords, connection strings, arbitrary SQL and query text are not accepted through MCP. Private database health, replication, contention and pressure reasoning stays in the loopback-only intelligence core. Existing RBAC, approval-gated local execution and R3+ restrictions remain unchanged."
     }
   );
 
@@ -279,6 +280,7 @@ export function createServer() {
   registerFleetTools(server);
   registerInfrastructureTools(server);
   registerPlatformTools(server);
+  registerDatabaseTools(server);
 
   return server;
 }
