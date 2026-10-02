@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.0
+
+- Added seven evidence-correlation MCP tools: `intelligence_status`, `correlate_process_activity`, `correlate_service_activity`, `correlate_identity_activity`, `correlate_network_activity`, `correlate_persistence_signals` and `build_incident_timeline`.
+- Added bounded cross-source evidence packaging for processes, services, network connections, startup programs, scheduled tasks, local identities and recent event evidence.
+- Preserves source permission/audit limitations in every correlation bundle.
+- Added an authenticated loopback-only client for the separate private OpsChugex LocalOps Intelligence Core.
+- Public client rejects non-loopback intelligence URLs and unsupported private routes.
+- Private authentication material is never returned in MCP responses or connection errors.
+- Proprietary correlation rules remain outside the public MIT repository.
+- v0.6 correlation reports evidence relationships and timelines only; root-cause, compromise and remediation decisions remain future private-core capabilities.
+- End-to-end Windows verification confirmed the public MCP can collect bounded evidence and receive correlation results from the private core over loopback.
+
 ## 0.5.0
 
 - Added a disabled-by-default Controlled Execution Gateway.

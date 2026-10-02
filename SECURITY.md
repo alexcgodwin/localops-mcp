@@ -1,71 +1,82 @@
 # Security Policy
 
-## v0.5 security boundary
+## v0.6 security boundary
 
-OpsChugex LocalOps MCP v0.5 keeps all v0.1-v0.4 collectors read-only and introduces a disabled-by-default execution gateway for a small R2 action set.
+OpsChugex LocalOps MCP v0.6 combines read-only collection, a disabled-by-default R2 execution gateway, and an optional private evidence-correlation service.
 
-It does not expose:
-- arbitrary shell execution
-- arbitrary PowerShell input
+It does **not** expose:
+
+- arbitrary shell or arbitrary PowerShell execution
 - process termination
-- service start/stop/restart
-- file deletion or quarantine
-- firewall mutation
-- account mutation
-- credential or secret retrieval
-- remote port scanning
-- packet capture or packet payload inspection
-- firewall rule mutation
-- event-log clearing or retention changes
-- audit-policy mutation
-- Defender configuration or quarantine mutation
-- arbitrary file deletion
-- process termination
-- account disabling
+- account disabling or account mutation
 - firewall mutation
 - quarantine operations
+- arbitrary file deletion
+- event-log clearing or retention changes
+- audit-policy mutation
+- Defender configuration mutation
+- remote port scanning
+- packet capture or packet payload inspection
+- credential, secret, SSH private-key or certificate private-key contents
+- R3+ execution actions
+- public or LAN access to the private intelligence core
 
-Platform commands are fixed by the server. User-controlled PIDs are numeric-only and service names are restricted to a narrow character set before any platform command is called.
+The only v0.5/v0.6 mutation actions are start/restart of explicitly allowlisted services, local DNS cache refresh, and bounded cleanup of old regular files inside the operating-system temporary directory.
 
-## Sensitive data
+## Data minimization
 
-Process command lines remain excluded because they commonly contain credentials and tokens.
+LocalOps follows these minimization rules:
 
-Endpoint, network, event evidence, and controlled execution in v0.5 follow additional minimization rules:
-
-- environment-variable names may be returned, but values are never returned
-- SSH key files are inventoried by metadata only; key contents are not read
-- scheduled-task action commands are not returned
-- startup command lines are not returned
-- certificate metadata may report whether a private key exists, but private key material is never read or returned
-- software-change detection uses a caller-supplied baseline and does not persist inventory locally
-- network tools inspect local OS state only; no remote port-scanning tool exists
-- packet contents are never captured or inspected
-- DNS resolution accepts one strictly validated host and uses the operating system resolver
-- listener and outbound-deviation tools require caller-supplied expectations and explicitly avoid malware/compromise conclusions
-- firewall inspection is read-only; permission failures are reported rather than bypassed
-- Windows event log names are restricted to an allowlisted set
+- process command lines are excluded
+- environment-variable names may be returned, values are never returned
+- SSH key files are inventoried by metadata only
+- scheduled-task action commands are excluded
+- startup command lines are excluded
+- certificate private-key material is never read
 - event messages are bounded and secret-like key/value patterns are redacted
-- event-log permission failures and missing audit coverage remain explicit evidence limitations
-- Linux process creation is not inferred from generic journal data; an explicit audit source is required
-- event aggregation remains deterministic and does not perform proprietary root-cause or compromise classification
-- execution is disabled unless `LOCALOPS_EXECUTION_ENABLED=true`
-- service mutations require exact names in `LOCALOPS_ALLOWED_SERVICES`
-- execution proposals do not mutate the host
-- approval tokens expire after five minutes and are one-time use
-- the executor requires exact `confirmation="APPROVE"`
-- service allowlisting is checked both during proposal and immediately before execution
-- v0.5 exposes only start/restart allowlisted service, local DNS cache refresh, and bounded old temp-file cleanup
-- temp cleanup never traverses outside the OS temp directory and excludes directories and symbolic links
-- approval tokens are excluded from audit records
-- R3+ actions remain absent from the public server
+- packet contents are never captured
+- caller-baseline deviations are not treated as malicious
+- inaccessible logs and missing audit coverage remain explicit evidence limitations
 
-Command output and errors pass through basic secret redaction before they are returned.
+## Controlled execution
+
+Execution is disabled unless `LOCALOPS_EXECUTION_ENABLED=true`.
+
+Service actions also require exact names in `LOCALOPS_ALLOWED_SERVICES`.
+
+The v0.6 execution path is:
+
+1. validate feature enablement
+2. validate target and allowlist
+3. run preflight
+4. create a five-minute one-time approval token
+5. require exact `confirmation="APPROVE"`
+6. re-check service allowlisting
+7. execute the action
+8. verify the result
+9. write an in-memory audit record
+10. return rollback/recovery guidance
+
+Approval tokens are never included in audit records.
+
+## Private intelligence core
+
+Evidence-correlation tools use the separate private OpsChugex LocalOps Intelligence Core.
+
+The public client:
+
+- accepts only `http` loopback endpoints
+- rejects non-loopback hostnames
+- requires `LOCALOPS_INTELLIGENCE_TOKEN` with at least 32 characters
+- calls only a fixed allowlist of private API routes
+- sends bounded normalized evidence
+- does not send arbitrary commands
+- does not echo authentication material in connection errors
+
+The private service binds only to `127.0.0.1` in v0.6.
+
+Correlation output describes evidence relationships. It does not claim root cause, compromise or remediation decisions.
 
 ## Reporting a vulnerability
 
-Please use GitHub's private security reporting / Security Advisories for this repository. Do not publish credentials, exploit details, or sensitive host data in a public issue.
-
-## Future execution features
-
-Mutation and remediation are planned only behind explicit enablement, allowlists, risk classification, approval, verification, rollback where practical, and audit logging.
+Please use GitHub private security reporting / Security Advisories for this repository. Do not publish credentials, exploit details, sensitive host data, private intelligence logic or customer evidence in a public issue.
