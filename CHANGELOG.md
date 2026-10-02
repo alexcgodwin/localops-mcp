@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.0
+
+- Added seven root-cause intelligence MCP tools: `rank_probable_causes`, `calculate_confidence`, `build_evidence_chain`, `suggest_investigation_path`, `identify_change_trigger`, `identify_blast_radius` and `recommend_remediation`.
+- Extended bounded evidence bundles with current host-health measurements and process resource metrics.
+- Added public schemas and allowlisted private routes for v0.7 analysis without exposing proprietary ranking logic.
+- Probable causes are explicitly ranked hypotheses rather than definitive verdicts.
+- Evidence confidence represents source coverage/alignment and is reduced by audit/permission limitations; it is not compromise probability.
+- Change-trigger output is explicitly temporal evidence rather than proof of causation.
+- Blast-radius output is bounded to observed local entities and network relationships and does not declare remote systems affected.
+- Remediation recommendations are advisory, risk-tiered and never authorize execution.
+- Proprietary ranking, confidence, evidence-chain, investigation, blast-radius and remediation algorithms remain in the private OpsChugex LocalOps Intelligence Core.
+
 ## 0.6.0
 
 - Added seven evidence-correlation MCP tools: `intelligence_status`, `correlate_process_activity`, `correlate_service_activity`, `correlate_identity_activity`, `correlate_network_activity`, `correlate_persistence_signals` and `build_incident_timeline`.

@@ -7,7 +7,7 @@ import {
   recentSystemChanges
 } from "./events.js";
 import { networkConnections } from "./network.js";
-import { listProcesses, listServices } from "./system.js";
+import { listProcesses, listServices, systemHealth } from "./system.js";
 
 type EvidenceEvent = {
   timestamp: string | null;
@@ -89,6 +89,7 @@ export async function collectCorrelationEvidence(
   const limitations: string[] = [];
 
   const [
+    health,
     processes,
     services,
     connections,
@@ -102,6 +103,12 @@ export async function collectCorrelationEvidence(
     loginFailures,
     processEvents
   ] = await Promise.all([
+    capture(
+      "system health",
+      () => systemHealth(),
+      null,
+      limitations
+    ),
     capture(
       "process inventory",
       () => listProcesses(safeLimit),
@@ -215,13 +222,26 @@ export async function collectCorrelationEvidence(
   return {
     collectedAt: new Date().toISOString(),
     windowHours: safeWindow,
+    ...(health ? { systemHealth: health } : {}),
     processes: processes.slice(0, safeLimit).map((process: any) => ({
       pid: Number(process.pid),
       name: String(process.name ?? ""),
       ...(Number.isFinite(Number(process.parentPid))
         ? { parentPid: Number(process.parentPid) }
         : {}),
-      ...(process.user ? { user: String(process.user) } : {})
+      ...(process.user ? { user: String(process.user) } : {}),
+      ...(Number.isFinite(Number(process.cpuSeconds))
+        ? { cpuSeconds: Number(process.cpuSeconds) }
+        : {}),
+      ...(Number.isFinite(Number(process.memoryBytes))
+        ? { memoryBytes: Number(process.memoryBytes) }
+        : {}),
+      ...(Number.isFinite(Number(process.cpuPercent))
+        ? { cpuPercent: Number(process.cpuPercent) }
+        : {}),
+      ...(Number.isFinite(Number(process.memoryPercent))
+        ? { memoryPercent: Number(process.memoryPercent) }
+        : {})
     })),
     services: services.slice(0, safeLimit).map((service: any) => ({
       name: String(service.name ?? ""),

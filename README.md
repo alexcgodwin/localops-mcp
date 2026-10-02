@@ -10,7 +10,7 @@
 
 OpsChugex LocalOps MCP is a cross-platform Model Context Protocol server for safely inspecting local Windows and Linux systems. It is designed as the local/private-infrastructure counterpart to the Cloud DevOps MCP Server.
 
-Version 0.6.0 adds evidence correlation through an optional private OpsChugex LocalOps Intelligence Core. The public MCP collects bounded normalized evidence and talks to the private engine only over an authenticated loopback HTTP interface. Correlation can link process, service, identity, network and persistence evidence and build chronological incident timelines without exposing the proprietary correlation implementation. v0.5 controlled execution remains disabled by default, and v0.6 still does not produce root-cause, compromise or remediation verdicts.
+Version 0.7.0 adds private root-cause intelligence on top of the v0.6 evidence-correlation layer. The public MCP still owns bounded evidence collection and safe MCP contracts, while the private OpsChugex LocalOps Intelligence Core owns cause ranking, evidence confidence, evidence chains, investigation sequencing, change-trigger selection, blast-radius reasoning and remediation recommendations. These outputs are evidence-backed hypotheses, not proof of compromise or certainty, and they never authorize execution.
 
 ## Why this exists
 
@@ -48,12 +48,19 @@ LocalOps starts at the operating-system layer:
 - authenticated loopback-only private intelligence interface
 - process, service, identity, network and persistence correlation
 - chronological incident evidence timelines
+- evidence-backed probable-cause ranking
+- evidence-confidence scoring with source-limit penalties
+- root-cause evidence chains
+- read-only investigation paths
+- temporal change-trigger identification
+- local/evidence-based blast-radius analysis
+- advisory remediation recommendations with risk tiers
 - normalized Windows/Linux outputs
 - explicit R0-R2 safety boundaries with R3+ blocked
 
 The long-term goal is evidence correlation across endpoints, private infrastructure, networking, storage and virtualization while keeping advanced OpsChugex intelligence proprietary.
 
-## v0.6 tools
+## v0.7 tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -118,6 +125,13 @@ The long-term goal is evidence correlation across endpoints, private infrastruct
 | `correlate_network_activity` | Correlate process-to-remote-endpoint relationships without packet capture |
 | `correlate_persistence_signals` | Correlate startup, scheduled-task, service, process and event evidence |
 | `build_incident_timeline` | Build a chronological evidence timeline while preserving source limitations |
+| `rank_probable_causes` | Rank evidence-backed operational hypotheses through the private core |
+| `calculate_confidence` | Measure evidence coverage/confidence without treating it as compromise probability |
+| `build_evidence_chain` | Build ordered supporting evidence chains for leading hypotheses |
+| `suggest_investigation_path` | Generate an evidence-first, read-only investigation sequence |
+| `identify_change_trigger` | Identify the earliest supported timestamped change as a temporal starting point |
+| `identify_blast_radius` | Summarize local entities and observed network relationships tied to leading hypotheses |
+| `recommend_remediation` | Return advisory risk-tiered remediation options without authorizing execution |
 
 ## Architecture
 
@@ -134,7 +148,7 @@ flowchart TD
     Client2 --> Core["Private OpsChugex LocalOps Intelligence Core"]
 ```
 
-The public MCP owns protocol handling, safe collectors, normalization, evidence packaging, the loopback client and community-visible integrations. The private OpsChugex intelligence core now owns evidence-correlation behavior and incident-timeline construction. Future root-cause, confidence, risk and remediation decision logic also stays private.
+The public MCP owns protocol handling, safe collectors, normalization, evidence packaging, the loopback client and community-visible integrations. The private OpsChugex intelligence core owns correlation, root-cause ranking, confidence scoring, evidence-chain construction, investigation sequencing, trigger selection, blast-radius reasoning and remediation recommendation logic.
 
 ## Quickstart
 
@@ -162,27 +176,27 @@ For development:
 npm run dev
 ```
 
-### Optional private correlation core
+### Optional private intelligence core
 
-The v0.6 correlation tools require the private OpsChugex LocalOps Intelligence Core to be running locally. Configure the public MCP process with:
+The v0.6 correlation tools and v0.7 root-cause tools require the private OpsChugex LocalOps Intelligence Core to be running locally. Configure the public MCP process with:
 
 ```text
 LOCALOPS_INTELLIGENCE_URL=http://127.0.0.1:43123
 LOCALOPS_INTELLIGENCE_TOKEN=<private token of at least 32 characters>
 ```
 
-The public client rejects non-loopback intelligence URLs. If the private core is not configured or running, all v0.1-v0.5 capabilities continue to work and `intelligence_status` reports the limitation.
+The public client rejects non-loopback intelligence URLs. If the private core is not configured or running, all v0.1-v0.5 local collection/execution capabilities continue to work and `intelligence_status` reports the limitation.
 
 ## Safety model
 
-v0.6 keeps the v0.5 read-first execution model and adds a private correlation boundary:
+v0.7 keeps the v0.5 read-first execution model and extends the private analysis boundary:
 
 ```text
 R0 READ                     allowed
 R1 ANALYZE / EVIDENCE       allowed
 R2 BOUNDED EXECUTION         disabled by default; explicit approval required
 R3+ HIGHER-RISK EXECUTION    not exposed
-PRIVATE CORRELATION           loopback-only, authenticated, read-only
+PRIVATE INTELLIGENCE          loopback-only, authenticated, analysis-only
 ```
 
 Important controls:
@@ -215,7 +229,12 @@ Important controls:
 - private API routes are allowlisted in the public client
 - correlation requests contain bounded normalized evidence, not arbitrary commands
 - private-core connection errors do not echo authentication material
-- correlation reports relationships and evidence gaps, not root-cause or compromise conclusions
+- correlation reports relationships and evidence gaps
+- root-cause rankings are hypotheses, not definitive verdicts
+- evidence confidence measures collection coverage/alignment, not compromise probability
+- change triggers are temporal starting points, not proof of causation
+- blast radius is bounded to observed local entities and network relationships
+- remediation recommendations never authorize execution
 - bounded list sizes
 - strict PID validation
 - strict service-name validation
@@ -229,9 +248,9 @@ Some platform collectors may require local permission to inspect specific proces
 
 This repository is the public implementation and portfolio-facing gateway.
 
-The separate private **OpsChugex LocalOps Intelligence Core** now implements v0.6 evidence correlation and incident timelines. Future private capabilities include root-cause ranking, confidence models, anomaly detection, risk evaluation, remediation decision logic and fleet-level intelligence.
+The separate private **OpsChugex LocalOps Intelligence Core** now implements v0.6 evidence correlation plus v0.7 root-cause ranking, confidence, evidence chains, investigation paths, change triggers, blast-radius analysis and remediation recommendations. Future private capabilities include anomaly detection, predictive health, fleet-level reasoning and orchestration.
 
-The public repository contains only the evidence contracts and loopback client. Proprietary correlation algorithms are not included in this MIT repository.
+The public repository contains only evidence collection, schemas and the loopback client. Proprietary correlation, ranking, confidence and remediation algorithms are not included in this MIT repository.
 
 ## Roadmap
 
@@ -243,7 +262,7 @@ The public repository contains only the evidence contracts and loopback client. 
 | 0.4 | Event and security evidence, completed |
 | 0.5 | Approval-gated controlled execution, completed |
 | 0.6 | Evidence correlation, completed |
-| 0.7 | Root-cause intelligence |
+| 0.7 | Root-cause intelligence, completed |
 | 0.8 | Fleet intelligence |
 | 0.9 | Private infrastructure and virtualization |
 | 1.0 | Production LocalOps platform |
