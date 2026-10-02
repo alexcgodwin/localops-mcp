@@ -10,7 +10,7 @@
 
 OpsChugex LocalOps MCP is a cross-platform Model Context Protocol server for safely inspecting local Windows and Linux systems. It is designed as the local/private-infrastructure counterpart to the Cloud DevOps MCP Server.
 
-Version 0.1.0 is intentionally read-only. It exposes fixed system-discovery tools and does not provide arbitrary shell execution, process termination, service mutation, file deletion, credential reads, or remediation.
+Version 0.2.0 remains intentionally read-only. In addition to system discovery, it adds endpoint inventory for installed software, local identities, startup registrations, scheduled tasks, certificates, SSH key metadata and environment-variable names. It does not provide arbitrary shell execution, process termination, service mutation, file deletion, credential reads, secret values, private-key contents, or remediation.
 
 ## Why this exists
 
@@ -23,12 +23,18 @@ LocalOps starts at the operating-system layer:
 - network interface inventory
 - bounded process inspection
 - Windows service and systemd service inspection
+- installed software and version inventory
+- local users, groups and administrator membership
+- startup program and scheduled-task metadata
+- certificate and certificate-expiry inventory
+- SSH key metadata without key contents
+- environment-variable names without values
 - normalized Windows/Linux outputs
 - read-only MCP access with explicit safety boundaries
 
 The long-term goal is evidence correlation across endpoints, private infrastructure, networking, storage and virtualization while keeping advanced OpsChugex intelligence proprietary.
 
-## v0.1 tools
+## v0.2 tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -43,6 +49,18 @@ The long-term goal is evidence correlation across endpoints, private infrastruct
 | `list_services` | Windows services or systemd units |
 | `service_status` | Inspect one validated service name |
 | `uptime` | System uptime in seconds, hours and days |
+| `installed_software` | Bounded installed-software inventory with versions |
+| `software_versions` | Look up versions for requested installed software |
+| `software_changes` | Compare current software with a caller-supplied baseline |
+| `local_users` | Local account metadata without credentials |
+| `local_groups` | Local group metadata and Linux group membership |
+| `local_admins` | Built-in Windows administrators or common Linux admin groups |
+| `startup_programs` | Startup registration metadata without command lines |
+| `scheduled_tasks` | Scheduled-task/timer metadata without action commands |
+| `certificate_inventory` | Certificate metadata without private key material |
+| `certificate_expiry` | Expired or soon-to-expire certificate evidence |
+| `ssh_key_inventory` | SSH-directory file metadata without key contents |
+| `environment_variables_summary` | Environment-variable names and sensitivity flags without values |
 
 ## Architecture
 
@@ -88,21 +106,24 @@ npm run dev
 
 ## Safety model
 
-v0.1 follows a narrow read-only model:
+v0.2 follows a narrow read-only model:
 
 ```text
 READ       allowed
 ANALYZE    allowed
 PLAN       future
-EXECUTE    not exposed in v0.1
-DESTRUCTIVE EXECUTION    not exposed in v0.1
+EXECUTE    not exposed in v0.2
+DESTRUCTIVE EXECUTION    not exposed in v0.2
 ```
 
 Important controls:
 
 - no arbitrary command tool
 - no arbitrary PowerShell or shell input
-- no environment-variable dump
+- no environment-variable values
+- no SSH key contents or private-key reads
+- no scheduled-task action commands
+- no startup command lines
 - no process command-line collection
 - bounded list sizes
 - strict PID validation
@@ -134,8 +155,8 @@ Those algorithms are not included in this MIT repository.
 
 | Version | Focus |
 | --- | --- |
-| 0.1 | System discovery |
-| 0.2 | Endpoint inventory |
+| 0.1 | System discovery, completed |
+| 0.2 | Endpoint inventory, completed |
 | 0.3 | Network intelligence |
 | 0.4 | Event and security evidence |
 | 0.5 | Approval-gated controlled execution |

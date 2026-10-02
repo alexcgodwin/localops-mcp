@@ -1,6 +1,6 @@
 {
   "name": "opschugex-localops-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "OpsChugex LocalOps MCP for local infrastructure, endpoint and systems intelligence on Windows and Linux.",
   "type": "module",
   "mcpName": "io.github.alexcgodwin/localops-mcp",
@@ -21,7 +21,8 @@
     "test": "vitest run",
     "check": "npm run build && npm test && npm audit --omit=dev --audit-level=high"
   },
-  "keywords": [    "mcp",
+  "keywords": [
+    "mcp",
     "model-context-protocol",
     "local-infrastructure",
     "endpoint",
@@ -44,7 +45,8 @@
   "engines": {
     "node": ">=20"
   },
-  "dependencies": {    "@modelcontextprotocol/server": "^2.2.0",
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.2.0",
     "zod": "^4.2.0"
   },
   "devDependencies": {
