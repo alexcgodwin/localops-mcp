@@ -16,8 +16,9 @@ import {
   systemInfo,
   uptimeInfo
 } from "./system.js";
+import { registerEndpointInventoryTools } from "./endpoint-tools.js";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -73,7 +74,7 @@ export function createServer() {
     { name: "opschugex-localops-mcp", version: VERSION },
     {
       instructions:
-        "Use LocalOps tools to inspect the local Windows or Linux host. v0.1 is read-only: it exposes fixed system discovery operations only, never arbitrary shell execution, mutation, remediation, credential reads or secret retrieval."
+        "Use LocalOps tools to inspect the local Windows or Linux host. v0.2 is read-only: it adds endpoint inventory for software, identities, startup items, scheduled tasks, certificates, SSH key metadata and environment-variable names. Never expose secret values, private-key contents, arbitrary shell execution, mutation or remediation."
     }
   );
 
@@ -260,6 +261,8 @@ export function createServer() {
     },
     async () => toolResult(uptimeInfo())
   );
+
+  registerEndpointInventoryTools(server);
 
   return server;
 }
