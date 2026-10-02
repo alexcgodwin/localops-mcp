@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0
+
+- Added a disabled-by-default Controlled Execution Gateway.
+- Added `execution_status`, `propose_execution`, `execute_approved_action` and `execution_audit_log`.
+- Added bounded R2 actions for starting an allowlisted service, restarting an allowlisted service, refreshing the local DNS cache and deleting bounded old regular files from the operating-system temporary directory.
+- Execution requires `LOCALOPS_EXECUTION_ENABLED=true`.
+- Service mutations additionally require exact allowlisting through `LOCALOPS_ALLOWED_SERVICES`.
+- Every action follows preflight -> proposal -> five-minute one-time approval token -> exact `APPROVE` confirmation -> execution -> verification -> audit -> rollback guidance.
+- Service allowlisting is rechecked immediately before execution.
+- Approval tokens are never written to the execution audit log.
+- v0.5 audit records are intentionally in-memory only.
+- R3+ actions such as process termination, account disabling, firewall mutation, quarantine and arbitrary file deletion are not exposed.
+- Live development verification used read-only status checks only; execution behavior was validated with mocks rather than mutating the development host.
+
 ## 0.4.0
 
 - Added bounded Windows Event Log and Linux journal evidence collectors.

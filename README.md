@@ -10,7 +10,7 @@
 
 OpsChugex LocalOps MCP is a cross-platform Model Context Protocol server for safely inspecting local Windows and Linux systems. It is designed as the local/private-infrastructure counterpart to the Cloud DevOps MCP Server.
 
-Version 0.4.0 remains intentionally read-only. In addition to system, endpoint and network visibility, it adds bounded event and security evidence collection for Windows and Linux. It can surface supported login, service-install, account/group, process-audit, scheduler and Defender evidence while preserving permission/audit gaps as explicit limitations. It does not provide log deletion, audit-policy changes, arbitrary shell execution, firewall mutation, process termination, credential reads, secret values, or remediation.
+Version 0.5.0 introduces a disabled-by-default Controlled Execution Gateway while preserving the read-only collectors from v0.1-v0.4. The only executable actions in v0.5 are bounded R2 operations: start an allowlisted service, restart an allowlisted service, refresh the local DNS cache, or delete a bounded number of old regular files from the operating-system temporary directory. Every execution requires enablement, preflight, a short-lived one-time approval token, exact confirmation, verification, audit output and rollback guidance. R3+ actions such as process termination, account disabling, firewall mutation, quarantine and arbitrary file deletion are not exposed.
 
 ## Why this exists
 
@@ -40,12 +40,16 @@ LocalOps starts at the operating-system layer:
 - Microsoft Defender operational evidence on Windows
 - explicit evidence-gap reporting when permissions or audit configuration are insufficient
 - caller-baseline service-change detection
+- disabled-by-default controlled execution gateway
+- exact service allowlisting for service mutations
+- five-minute one-time approval tokens
+- post-action verification and in-memory audit records
 - normalized Windows/Linux outputs
-- read-only MCP access with explicit safety boundaries
+- explicit R0-R2 safety boundaries with R3+ blocked in v0.5
 
 The long-term goal is evidence correlation across endpoints, private infrastructure, networking, storage and virtualization while keeping advanced OpsChugex intelligence proprietary.
 
-## v0.4 tools
+## v0.5 tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -99,6 +103,10 @@ The long-term goal is evidence correlation across endpoints, private infrastruct
 | `recent_system_changes` | Deterministic aggregation of supported system-change evidence |
 | `recent_security_changes` | Deterministic aggregation of supported security-change evidence |
 | `detect_new_services` | Compare current service names with a caller-supplied baseline |
+| `execution_status` | Show execution enablement, allowlist and v0.5 risk-policy state |
+| `propose_execution` | Run preflight and issue a five-minute one-time approval token without executing |
+| `execute_approved_action` | Execute exactly the action bound to a valid approval token |
+| `execution_audit_log` | Read recent in-memory execution audit records without approval tokens |
 
 ## Architecture
 
@@ -144,14 +152,13 @@ npm run dev
 
 ## Safety model
 
-v0.4 follows a narrow read-only model:
+v0.5 uses a read-first, approval-gated execution model:
 
 ```text
-READ       allowed
-ANALYZE    allowed
-PLAN       future
-EXECUTE    not exposed in v0.4
-DESTRUCTIVE EXECUTION    not exposed in v0.4
+R0 READ                     allowed
+R1 ANALYZE / EVIDENCE       allowed
+R2 BOUNDED EXECUTION         disabled by default; explicit approval required
+R3+ HIGHER-RISK EXECUTION    not exposed in v0.5
 ```
 
 Important controls:
@@ -171,6 +178,14 @@ Important controls:
 - no audit-policy changes
 - event messages are bounded and secret-like values are redacted
 - inaccessible logs and missing audit coverage are reported as evidence limitations rather than interpreted as clean
+- execution is disabled unless `LOCALOPS_EXECUTION_ENABLED=true`
+- service actions require the exact service name in `LOCALOPS_ALLOWED_SERVICES`
+- proposals perform preflight but do not execute
+- approval tokens expire after five minutes and are one-time use
+- execution requires `confirmation="APPROVE"`
+- service allowlisting is checked again immediately before execution
+- temporary cleanup is restricted to old regular files inside the OS temp directory, with bounded age/count controls
+- R3+ actions are intentionally absent from the public v0.5 server
 - bounded list sizes
 - strict PID validation
 - strict service-name validation
@@ -205,7 +220,7 @@ Those algorithms are not included in this MIT repository.
 | 0.2 | Endpoint inventory, completed |
 | 0.3 | Network intelligence, completed |
 | 0.4 | Event and security evidence, completed |
-| 0.5 | Approval-gated controlled execution |
+| 0.5 | Approval-gated controlled execution, completed |
 | 0.6 | Evidence correlation |
 | 0.7 | Root-cause intelligence |
 | 0.8 | Fleet intelligence |
