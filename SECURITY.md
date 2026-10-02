@@ -1,8 +1,8 @@
 # Security Policy
 
-## v0.2 security boundary
+## v0.3 security boundary
 
-OpsChugex LocalOps MCP v0.2 is read-only.
+OpsChugex LocalOps MCP v0.3 is read-only.
 
 It does not expose:
 - arbitrary shell execution
@@ -13,6 +13,9 @@ It does not expose:
 - firewall mutation
 - account mutation
 - credential or secret retrieval
+- remote port scanning
+- packet capture or packet payload inspection
+- firewall rule mutation
 
 Platform commands are fixed by the server. User-controlled PIDs are numeric-only and service names are restricted to a narrow character set before any platform command is called.
 
@@ -20,7 +23,7 @@ Platform commands are fixed by the server. User-controlled PIDs are numeric-only
 
 Process command lines remain excluded because they commonly contain credentials and tokens.
 
-Endpoint inventory in v0.2 follows additional minimization rules:
+Endpoint and network inventory in v0.3 follows additional minimization rules:
 
 - environment-variable names may be returned, but values are never returned
 - SSH key files are inventoried by metadata only; key contents are not read
@@ -28,6 +31,11 @@ Endpoint inventory in v0.2 follows additional minimization rules:
 - startup command lines are not returned
 - certificate metadata may report whether a private key exists, but private key material is never read or returned
 - software-change detection uses a caller-supplied baseline and does not persist inventory locally
+- network tools inspect local OS state only; no remote port-scanning tool exists
+- packet contents are never captured or inspected
+- DNS resolution accepts one strictly validated host and uses the operating system resolver
+- listener and outbound-deviation tools require caller-supplied expectations and explicitly avoid malware/compromise conclusions
+- firewall inspection is read-only; permission failures are reported rather than bypassed
 
 Command output and errors pass through basic secret redaction before they are returned.
 

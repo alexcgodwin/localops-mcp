@@ -10,7 +10,7 @@
 
 OpsChugex LocalOps MCP is a cross-platform Model Context Protocol server for safely inspecting local Windows and Linux systems. It is designed as the local/private-infrastructure counterpart to the Cloud DevOps MCP Server.
 
-Version 0.2.0 remains intentionally read-only. In addition to system discovery, it adds endpoint inventory for installed software, local identities, startup registrations, scheduled tasks, certificates, SSH key metadata and environment-variable names. It does not provide arbitrary shell execution, process termination, service mutation, file deletion, credential reads, secret values, private-key contents, or remediation.
+Version 0.3.0 remains intentionally read-only. In addition to system discovery and endpoint inventory, it adds local network intelligence for listeners, connections, routes, DNS, firewall state, adapters, neighbor cache and process-to-network mapping. It does not provide port scanning, packet capture, arbitrary shell execution, firewall mutation, process termination, credential reads, secret values, private-key contents, or remediation.
 
 ## Why this exists
 
@@ -29,12 +29,17 @@ LocalOps starts at the operating-system layer:
 - certificate and certificate-expiry inventory
 - SSH key metadata without key contents
 - environment-variable names without values
+- local listening ports and active connection evidence
+- routing, DNS and firewall configuration summaries
+- adapter and ARP/neighbor-cache inventory
+- process-to-network mapping without packet contents
+- caller-baseline checks for unexpected listeners and outbound endpoints
 - normalized Windows/Linux outputs
 - read-only MCP access with explicit safety boundaries
 
 The long-term goal is evidence correlation across endpoints, private infrastructure, networking, storage and virtualization while keeping advanced OpsChugex intelligence proprietary.
 
-## v0.2 tools
+## v0.3 tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -61,6 +66,19 @@ The long-term goal is evidence correlation across endpoints, private infrastruct
 | `certificate_expiry` | Expired or soon-to-expire certificate evidence |
 | `ssh_key_inventory` | SSH-directory file metadata without key contents |
 | `environment_variables_summary` | Environment-variable names and sensitivity flags without values |
+| `open_ports` | Unique local TCP/UDP listening endpoints without remote scanning |
+| `listening_ports` | Local TCP listeners and UDP endpoints with owner metadata |
+| `network_connections` | Bounded local TCP/UDP socket state without packet capture |
+| `network_routes` | Local routing table |
+| `dns_configuration` | Configured DNS servers and search domains |
+| `dns_resolution` | Resolve one validated host through the OS resolver |
+| `firewall_status` | Local firewall provider/profile state |
+| `firewall_rules` | Bounded read-only firewall-rule summary |
+| `network_adapters` | Local adapter and link-state inventory |
+| `arp_neighbors` | Local ARP/neighbor-cache evidence without active probing |
+| `process_network_map` | Group observed sockets by owning process |
+| `unexpected_listening_ports` | Compare listeners with a caller-supplied port baseline |
+| `unusual_outbound_connections` | Compare active TCP remotes with caller-supplied expectations |
 
 ## Architecture
 
@@ -106,14 +124,14 @@ npm run dev
 
 ## Safety model
 
-v0.2 follows a narrow read-only model:
+v0.3 follows a narrow read-only model:
 
 ```text
 READ       allowed
 ANALYZE    allowed
 PLAN       future
-EXECUTE    not exposed in v0.2
-DESTRUCTIVE EXECUTION    not exposed in v0.2
+EXECUTE    not exposed in v0.3
+DESTRUCTIVE EXECUTION    not exposed in v0.3
 ```
 
 Important controls:
@@ -125,6 +143,10 @@ Important controls:
 - no scheduled-task action commands
 - no startup command lines
 - no process command-line collection
+- no remote port scanning
+- no packet capture or packet payload inspection
+- no firewall changes
+- "unexpected" and "outside baseline" mean only that caller-supplied expectations did not match
 - bounded list sizes
 - strict PID validation
 - strict service-name validation
@@ -157,7 +179,7 @@ Those algorithms are not included in this MIT repository.
 | --- | --- |
 | 0.1 | System discovery, completed |
 | 0.2 | Endpoint inventory, completed |
-| 0.3 | Network intelligence |
+| 0.3 | Network intelligence, completed |
 | 0.4 | Event and security evidence |
 | 0.5 | Approval-gated controlled execution |
 | 0.6 | Evidence correlation |
