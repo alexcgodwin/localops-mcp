@@ -4,6 +4,13 @@ import os from "node:os";
 import { join, resolve } from "node:path";
 import { CommandRunner, defaultCommandRunner } from "./command.js";
 import { serviceStatus } from "./system.js";
+import {
+  appendDurableAudit,
+  auditPersistenceEnabled,
+  currentOperatorId,
+  currentRole,
+  requirePolicy
+} from "./platform.js";
 
 type Platform = NodeJS.Platform;
 
@@ -26,6 +33,8 @@ type ApprovalRecord = {
 export type AuditRecord = {
   id: string;
   timestamp: string;
+  operatorId: string;
+  role: "viewer" | "operator" | "maintainer" | "admin";
   action: ControlledAction;
   target: string | null;
   riskTier: "R2";
@@ -91,6 +100,46 @@ function addAudit(record: AuditRecord): AuditRecord {
   return record;
 }
 
+async function persistAudit(record: AuditRecord) {
+  if (!auditPersistenceEnabled()) {
+    return {
+      enabled: false,
+      persisted: false,
+      limitation: "Durable audit persistence is disabled."
+    };
+  }
+
+  try {
+    await appendDurableAudit({
+      id: record.id,
+      timestamp: record.timestamp,
+      operatorId: record.operatorId,
+      role: record.role,
+      action: record.action,
+      target: record.target,
+      riskTier: record.riskTier,
+      approved: record.approved,
+      executed: record.executed,
+      verified: record.verified,
+      outcome:
+        record.executed && record.verified ? "success" : "failure"
+    });
+    return {
+      enabled: true,
+      persisted: true,
+      limitation: null
+    };
+  } catch (error) {
+    return {
+      enabled: true,
+      persisted: false,
+      limitation:
+        "Durable audit write failed: " +
+        (error instanceof Error ? error.message : String(error))
+    };
+  }
+}
+
 function actionRollback(action: ControlledAction, target: string | null): string {
   if (action === "start_service") {
     return target
@@ -109,6 +158,9 @@ function actionRollback(action: ControlledAction, target: string | null): string
 export function executionStatus() {
   return {
     enabled: isExecutionEnabled(),
+    operatorId: currentOperatorId(),
+    role: currentRole(),
+    durableAuditEnabled: auditPersistenceEnabled(),
     approvalTtlSeconds: APPROVAL_TTL_MS / 1000,
     allowedServices: [...allowedServices()].sort(),
     supportedActions: [
@@ -118,12 +170,12 @@ export function executionStatus() {
       "clean_temp_files"
     ] as ControlledAction[],
     defaultPolicy:
-      "Execution is disabled unless LOCALOPS_EXECUTION_ENABLED=true. Service actions additionally require the exact service name in LOCALOPS_ALLOWED_SERVICES.",
+      "Execution is disabled unless LOCALOPS_EXECUTION_ENABLED=true. v1.0 also enforces the process-bound LOCALOPS_ROLE policy; R2 execution requires maintainer or admin. Service actions additionally require the exact service name in LOCALOPS_ALLOWED_SERVICES.",
     riskModel: {
       R0: "read-only local inspection",
       R1: "analysis and evidence aggregation",
-      R2: "bounded reversible-or-low-impact execution with explicit approval",
-      R3Plus: "not exposed in v0.5"
+      R2: "bounded reversible-or-low-impact execution with explicit approval and RBAC",
+      R3Plus: "not exposed"
     }
   };
 }
@@ -139,6 +191,7 @@ export async function proposeExecution(
   platform: Platform = process.platform
 ) {
   cleanupExpiredApprovals();
+  requirePolicy("propose_execution", "R2");
 
   if (!isExecutionEnabled()) {
     throw new Error(
@@ -325,6 +378,7 @@ export async function executeApprovedAction(
   platform: Platform = process.platform
 ) {
   cleanupExpiredApprovals();
+  requirePolicy("execute_r2", "R2");
 
   if (!isExecutionEnabled()) {
     throw new Error("Controlled execution is disabled.");
@@ -389,6 +443,8 @@ export async function executeApprovedAction(
     const audit = addAudit({
       id: auditId(),
       timestamp: new Date().toISOString(),
+      operatorId: currentOperatorId(),
+      role: currentRole(),
       action: approval.action,
       target: approval.target,
       riskTier: "R2",
@@ -399,6 +455,8 @@ export async function executeApprovedAction(
       rollback: actionRollback(approval.action, approval.target)
     });
 
+    const durableAudit = await persistAudit(audit);
+
     return {
       action: approval.action,
       target: approval.target,
@@ -407,13 +465,16 @@ export async function executeApprovedAction(
       verified,
       result,
       rollback: audit.rollback,
-      auditId: audit.id
+      auditId: audit.id,
+      durableAudit
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const audit = addAudit({
       id: auditId(),
       timestamp: new Date().toISOString(),
+      operatorId: currentOperatorId(),
+      role: currentRole(),
       action: approval.action,
       target: approval.target,
       riskTier: "R2",
@@ -423,7 +484,18 @@ export async function executeApprovedAction(
       result: message.slice(0, 2000),
       rollback: actionRollback(approval.action, approval.target)
     });
-    throw new Error("Approved action failed: " + message + " | auditId=" + audit.id);
+    const durableAudit = await persistAudit(audit);
+    const auditSuffix =
+      durableAudit.enabled && !durableAudit.persisted
+        ? " | durableAudit=" + durableAudit.limitation
+        : "";
+    throw new Error(
+      "Approved action failed: " +
+        message +
+        " | auditId=" +
+        audit.id +
+        auditSuffix
+    );
   }
 }
 
@@ -431,7 +503,8 @@ export function recentExecutionAudit(limit = 50) {
   const safeLimit = Math.max(1, Math.min(Math.trunc(limit), 200));
   return {
     records: auditRecords.slice(0, safeLimit),
-    persistence:
-      "v0.5 audit records are in-memory only and are cleared when the LocalOps process exits."
+    persistence: auditPersistenceEnabled()
+      ? "v1.0 keeps recent records in memory and also appends metadata-only execution events to the configured local JSONL audit file."
+      : "Recent execution records are in-memory only. Set LOCALOPS_AUDIT_PERSISTENCE=true for durable local JSONL audit storage."
   };
 }

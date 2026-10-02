@@ -1,67 +1,54 @@
 # Security Policy
 
-## v0.9 security boundary
+## v1.0 production boundary
 
-OpsChugex LocalOps MCP v0.9 combines read-only local collection, a disabled-by-default R2 local execution gateway, private correlation/root-cause/fleet analysis, and read-only Private Infrastructure Intelligence.
+OpsChugex LocalOps MCP v1.0 remains a local stdio MCP server. It adds process-bound RBAC, enforced policy evaluation, production readiness checks, and optional metadata-only durable execution auditing.
 
-It does **not** expose:
+It does **not** expose arbitrary shell/PowerShell, SSH/WinRM fleet control, remote credential storage, subnet discovery, SNMP writes, hypervisor/storage mutation, lateral execution, cross-device remediation, or R3+ automatic execution.
 
-- arbitrary shell or arbitrary PowerShell execution
-- subnet discovery or remote port scanning
-- SSH, WinRM, remote shell or remote credential storage
-- SNMP writes or device-configuration mutation
-- hypervisor VM start/stop/create/delete actions
-- storage formatting, mounting changes or filesystem mutation
-- lateral command execution
-- process termination, account disabling or credential changes
-- firewall mutation or quarantine
-- packet capture
-- R3+ automatic execution
-- automatic cross-node or cross-device remediation
-- public or LAN access to the private intelligence core
+## RBAC
 
-## Private infrastructure collection
+Supported roles:
 
-Local infrastructure tools use fixed read-only local commands/APIs:
+- `viewer`: R0/R1 inspection and analysis
+- `operator`: R0/R1 plus R2 proposal creation
+- `maintainer`: R0/R1 plus R2 proposal and approved execution
+- `admin`: same R2 execution boundary as maintainer; R3+ remains unavailable
 
-- Hyper-V PowerShell `Get-VM`
-- VirtualBox `VBoxManage list`
-- Proxmox `qm list`
-- libvirt `virsh list --all`
-- VMware `vmrun list`
-- local filesystem capacity
-- supported Windows physical-disk health metadata
-- Windows `Win32_Battery` or Linux UPower telemetry
+The default role is `viewer`.
 
-Unavailable providers are reported as limitations. LocalOps does not fall back to arbitrary shell execution.
+RBAC identity is process-bound configuration for the local stdio process. It is not a remote multi-user authentication system.
 
-## Network-device and topology analysis
+## Controlled execution
 
-`network_device_health` and `private_network_topology` consume bounded caller-supplied snapshots. They do not discover, probe, authenticate to or configure infrastructure devices.
+Execution still requires all of the following:
 
-Submitted snapshots do not authenticate, enroll, attest or establish trust in a device.
+1. `LOCALOPS_EXECUTION_ENABLED=true`
+2. sufficient RBAC role
+3. exact service allowlisting where applicable
+4. preflight
+5. five-minute one-time approval token
+6. exact `confirmation="APPROVE"`
+7. execution verification
+8. audit record
+9. rollback/recovery guidance
 
-The private API validates:
+## Durable audit
 
-- unique bounded device identifiers
-- valid timestamps
-- bounded metric ranges
-- bounded interface/tag/limitation arrays
-- link endpoints that reference submitted devices
-- bounded link counts
+When `LOCALOPS_AUDIT_PERSISTENCE=true`, LocalOps appends metadata-only JSONL records under `LOCALOPS_DATA_DIR` or the default local application directory.
 
-Topology articulation results indicate dependency concentration in the submitted graph. They are not guaranteed production single points of failure.
+Durable records include operator ID, role, action, target, risk tier, approval/execution/verification state, and outcome. They do not contain approval tokens or command output.
 
-## Fleet and execution boundaries
+Production readiness reports execution without durable audit as blocked.
 
-The v0.8 fleet registry remains in-memory only and capped at 500 nodes. Fleet snapshot registration does not authenticate node identity.
+## Private intelligence
 
-The v0.5 local execution gateway remains separate. Execution is disabled unless `LOCALOPS_EXECUTION_ENABLED=true`; service actions require exact allowlisting and short-lived explicit approval. Infrastructure/fleet analysis cannot create, reuse or bypass those approvals.
+The separate intelligence core remains bearer-authenticated and loopback-only. Public client routes are allowlisted and non-loopback private-core URLs are rejected.
 
-## Private intelligence core
+## Data minimization
 
-The public client accepts only literal loopback IP endpoints, requires `LOCALOPS_INTELLIGENCE_TOKEN` with at least 32 characters, calls only allowlisted private API routes, and does not echo authentication material in connection errors.
+Existing data-minimization rules remain: no environment values, no private-key contents, no process command lines, no startup/scheduled-task commands, no packet payloads, bounded event text, and explicit evidence limitations.
 
-## Reporting a vulnerability
+## Reporting
 
-Use GitHub private security reporting / Security Advisories. Do not publish credentials, sensitive host/fleet/infrastructure data, customer evidence or proprietary intelligence behavior in a public issue.
+Use GitHub private security reporting / Security Advisories. Do not publish credentials, sensitive host/fleet data, customer evidence, or proprietary intelligence behavior in a public issue.

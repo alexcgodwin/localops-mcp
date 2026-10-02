@@ -24,8 +24,9 @@ import { registerCorrelationTools } from "./correlation-tools.js";
 import { registerRootCauseTools } from "./root-cause-tools.js";
 import { registerFleetTools } from "./fleet-tools.js";
 import { registerInfrastructureTools } from "./infrastructure-tools.js";
+import { registerPlatformTools } from "./platform-tools.js";
 
-const VERSION = "0.9.0";
+const VERSION = "1.0.0";
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -81,7 +82,7 @@ export function createServer() {
     { name: "opschugex-localops-mcp", version: VERSION },
     {
       instructions:
-        "Use LocalOps tools to inspect local Windows or Linux hosts and bounded private-infrastructure snapshots. v0.9 adds read-only local VM, storage and power telemetry plus private device-health/topology analysis through the authenticated loopback-only OpsChugex LocalOps Intelligence Core. LocalOps does not perform subnet discovery, remote login, SSH, WinRM, SNMP writes, hypervisor mutation, storage mutation, lateral execution or cross-device remediation. Submitted infrastructure snapshots are evidence, not authenticated device identity or attestation. Existing controlled execution remains local and separately approval-gated."
+        "OpsChugex LocalOps v1.0 is a production-oriented local operations platform for Windows and Linux. The public MCP remains local stdio and now enforces process-bound RBAC for controlled execution, exposes production readiness/policy status, and supports optional metadata-only durable execution auditing. Existing collection, correlation, root-cause, fleet and private-infrastructure analysis remain available. R3+ execution, remote shell, SSH/WinRM control, subnet discovery, hypervisor/storage mutation, lateral execution and cross-device remediation remain unavailable."
     }
   );
 
@@ -277,6 +278,7 @@ export function createServer() {
   registerRootCauseTools(server);
   registerFleetTools(server);
   registerInfrastructureTools(server);
+  registerPlatformTools(server);
 
   return server;
 }

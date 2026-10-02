@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.0
+
+- Added process-bound RBAC roles: `viewer`, `operator`, `maintainer`, and `admin`.
+- Added enforced R0/R1/R2/R3+ policy evaluation; R3+ execution remains unavailable.
+- Added `platform_status`, `policy_status`, `evaluate_policy`, `production_readiness`, and `production_audit_log`.
+- Enforced RBAC at both execution proposal and R2 execution boundaries.
+- Default role is least-privileged `viewer`.
+- Added optional metadata-only durable JSONL execution auditing through `LOCALOPS_AUDIT_PERSISTENCE=true`.
+- Durable audit records exclude approval tokens and command output.
+- Added production readiness checks for Node.js, RBAC, execution/audit coherence, data-directory safety, and private-core reachability.
+- Existing local controlled execution still requires feature enablement, exact service allowlisting, one-time approval, exact `APPROVE` confirmation, verification, and rollback guidance.
+- v1.0 adds no R3+ actions, remote shell, SSH/WinRM fleet control, hypervisor/storage mutation, lateral execution, or cross-device remediation.
+
 ## 0.9.0
 
 - Added `virtual_machine_inventory` for locally available Hyper-V, VirtualBox, Proxmox, libvirt and VMware CLI inventory using fixed read-only commands.
