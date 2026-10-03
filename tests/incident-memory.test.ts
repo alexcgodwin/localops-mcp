@@ -179,7 +179,11 @@ describe("v1.8 public durable incident knowledge", () => {
       ["/v1/incidents/resolution-history", "1.8.0"],
       ["/v1/incidents/knowledge-search", "1.9.0"],
       ["/v1/incidents/neighbors", "1.9.0"],
-      ["/v1/incidents/clusters", "1.9.0"]
+      ["/v1/incidents/clusters", "1.9.0"],
+      ["/v2/knowledge/graph", "2.0.0"],
+      ["/v2/knowledge/trace", "2.0.0"],
+      ["/v2/knowledge/entity-cases", "2.0.0"],
+      ["/v2/knowledge/investigation", "2.0.0"]
     ] as const;
 
     for (const [route, version] of allowed) {
@@ -201,6 +205,15 @@ describe("v1.8 public durable incident knowledge", () => {
     await expect(
       callPrivateIntelligence(
         "/v1/incidents/execute",
+        {},
+        (async () =>
+          new Response("{}", { status: 200 })) as typeof fetch
+      )
+    ).rejects.toThrow("Unsupported private intelligence route");
+
+    await expect(
+      callPrivateIntelligence(
+        "/v2/knowledge/execute",
         {},
         (async () =>
           new Response("{}", { status: 200 })) as typeof fetch

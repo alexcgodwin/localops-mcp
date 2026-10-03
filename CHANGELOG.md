@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.0.0
+
+- Added Operational Knowledge Graph & Guided Investigation as the first major v2 intelligence layer.
+- Added `operational_knowledge_graph`, `incident_knowledge_trace`, `incident_entity_cases` and `guided_incident_investigation`.
+- Operational graph construction links up to 200 retained cases with normalized signal, tag, cause, outcome and resolution entities plus threshold-qualified case-similarity edges.
+- Graph output is bounded to 1,200 nodes and 4,000 edges and reports truncation.
+- Relationship tracing is bounded to depth 4 and at most 20 returned paths.
+- Entity lookup accepts one exact normalized signal, tag, cause, outcome or resolution value and returns at most 50 cases.
+- Guided investigation returns fixed ordered non-mutating evidence-review steps using current and historical case evidence.
+- Added fixed authenticated loopback routes under `/v2/knowledge/*`; `/v2/knowledge/execute` is not allowlisted and no v2 execution route exists.
+- Graph relationships, paths and similarity values are investigation evidence only and do not prove causation or authorize remediation.
+
 ## 1.9.0
 
 - Added Incident Knowledge Search & Case Clustering on top of durable v1.8 incident knowledge.

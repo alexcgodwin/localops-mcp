@@ -29,8 +29,9 @@ import { registerDatabaseTools } from "./database-tools.js";
 import { registerStorageBackupTools } from "./storage-backup-tools.js";
 import { registerRemediationWorkflowTools } from "./remediation-tools.js";
 import { registerIncidentMemoryTools } from "./incident-memory-tools.js";
+import { registerKnowledgeGraphTools } from "./knowledge-graph-tools.js";
 
-const VERSION = "1.9.0";
+const VERSION = "2.0.0";
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -86,7 +87,7 @@ export function createServer() {
     { name: "opschugex-localops-mcp", version: VERSION },
     {
       instructions:
-        "OpsChugex LocalOps v1.9 adds Incident Knowledge Search & Case Clustering on top of durable incident knowledge. Operators can search retained cases using bounded structured evidence fields, find nearest historical cases by normalized fingerprint overlap, and group similar cases into threshold-connected clusters. Search and clustering use local normalized metadata only; no external embedding service, raw log search, packet inspection or arbitrary query language is introduced. Match and similarity percentages are descriptive evidence measures, not probability, causation or remediation authorization. Existing approval-gated R2 execution and R3+ restrictions remain unchanged."
+        "OpsChugex LocalOps v2.0 adds an Operational Knowledge Graph & Guided Investigation layer on top of durable incident knowledge. LocalOps can build bounded graphs linking cases to signals, tags, cause categories, outcomes and resolutions, trace evidence paths between incidents, look up cases by normalized graph entities, and generate ordered non-mutating investigation plans from current and historical evidence. Graph links and similarity remain descriptive evidence, not causal proof or execution authorization. No new automatic remediation path is introduced; existing approval-gated R2 execution and R3+ restrictions remain unchanged."
     }
   );
 
@@ -287,6 +288,7 @@ export function createServer() {
   registerStorageBackupTools(server);
   registerRemediationWorkflowTools(server);
   registerIncidentMemoryTools(server);
+  registerKnowledgeGraphTools(server);
 
   return server;
 }
