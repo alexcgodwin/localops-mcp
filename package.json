@@ -1,7 +1,7 @@
 {
   "name": "opschugex-localops-mcp",
-  "version": "1.4.0",
-  "description": "OpsChugex LocalOps MCP for local infrastructure, endpoint, database, backup, topology and approval-gated remediation intelligence on Windows and Linux.",
+  "version": "1.5.0",
+  "description": "OpsChugex LocalOps MCP for local infrastructure, endpoint, database, backup, topology, predictive health and approval-gated remediation intelligence on Windows and Linux.",
   "type": "module",
   "mcpName": "io.github.alexcgodwin/localops-mcp",
   "bin": {
@@ -35,7 +35,9 @@
     "database",
     "backup",
     "remediation",
-    "automation"
+    "automation",
+    "predictive-health",
+    "capacity-forecasting"
   ],
   "author": "Alex C. Godwin",
   "license": "MIT",

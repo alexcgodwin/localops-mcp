@@ -9,6 +9,8 @@ import {
   getNode,
   listNodes,
   nodeHealth,
+  nodeHealthHistory,
+  predictiveHealthBundle,
   registerNode
 } from "./fleet.js";
 import { callPrivateIntelligence } from "./intelligence-client.js";
@@ -157,6 +159,54 @@ const driftSchema = z.object({
   limitations: z.array(z.string())
 });
 
+const healthObservationSchema = z.object({
+  capturedAt: z.string(),
+  health: z.enum(["healthy", "warning", "critical"]),
+  uptimeSeconds: z.number(),
+  cpuUsagePercent: z.number(),
+  memoryUsagePercent: z.number(),
+  maxDiskUsagePercent: z.number()
+});
+
+const predictiveMetricSchema = z.object({
+  metric: z.enum(["cpu", "memory", "disk"]),
+  currentPercent: z.number().nullable(),
+  slopePercentPerHour: z.number().nullable(),
+  direction: z.enum(["decreasing", "stable", "increasing", "unknown"]),
+  projectedPercentAtHorizon: z.number().nullable(),
+  timeToWarningHours: z.number().nullable(),
+  timeToCriticalHours: z.number().nullable()
+});
+
+const predictiveNodeSchema = z.object({
+  nodeId: z.string(),
+  label: z.string(),
+  status: z.enum(["stable", "watch", "elevated", "insufficient-data"]),
+  observationCount: z.number(),
+  spanHours: z.number(),
+  evidenceConfidence: z.number().min(0).max(100),
+  confidenceBand: z.enum(["low", "medium", "high"]),
+  metrics: z.array(predictiveMetricSchema),
+  reasons: z.array(z.string()),
+  limitations: z.array(z.string())
+});
+
+const predictiveResultSchema = z.object({
+  engineVersion: z.literal("1.5.0"),
+  generatedAt: z.string(),
+  horizonHours: z.number(),
+  nodeCount: z.number(),
+  counts: z.object({
+    stable: z.number(),
+    watch: z.number(),
+    elevated: z.number(),
+    insufficientData: z.number()
+  }),
+  nodes: z.array(predictiveNodeSchema),
+  interpretation: z.string(),
+  limitations: z.array(z.string())
+});
+
 async function runFleetDrift(route: string, baselineNodeId: string) {
   getNode(baselineNodeId);
   const bundle = {
@@ -201,6 +251,7 @@ export function registerFleetTools(server: McpServer) {
         updated: z.boolean(),
         registeredAt: z.string(),
         updatedAt: z.string(),
+        healthObservationCount: z.number(),
         persistence: z.string()
       })
     },
@@ -250,6 +301,70 @@ export function registerFleetTools(server: McpServer) {
       })
     },
     async ({ nodeId }) => toolResult(nodeHealth(nodeId))
+  );
+
+  server.registerTool(
+    "node_health_history",
+    {
+      title: "Fleet Node Health History",
+      description:
+        "Return the bounded in-memory CPU, memory and disk health observations retained for one registered node. History is local process state only and is not durable telemetry.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({
+        nodeId: z.string().min(1).max(128),
+        limit: z.number().int().min(1).max(96).optional()
+      }),
+      outputSchema: z.object({
+        nodeId: z.string(),
+        label: z.string(),
+        tags: z.array(z.string()),
+        observationCount: z.number(),
+        observations: z.array(healthObservationSchema).max(96),
+        limitations: z.array(z.string()),
+        persistence: z.string()
+      })
+    },
+    async ({ nodeId, limit }) =>
+      toolResult(nodeHealthHistory(nodeId, limit))
+  );
+
+  server.registerTool(
+    "node_predictive_health",
+    {
+      title: "Node Predictive Health",
+      description:
+        "Analyze bounded retained health history for one registered node through the private intelligence core. Results are trend extrapolations with evidence-confidence limits, not failure probabilities or guarantees.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({
+        nodeId: z.string().min(1).max(128),
+        horizonHours: z.number().int().min(1).max(168).optional()
+      }),
+      outputSchema: predictiveResultSchema
+    },
+    async ({ nodeId, horizonHours }) =>
+      toolResult(await callPrivateIntelligence(
+        "/v1/predictive/health",
+        predictiveHealthBundle(horizonHours, nodeId)
+      ))
+  );
+
+  server.registerTool(
+    "fleet_predictive_health",
+    {
+      title: "Fleet Predictive Health",
+      description:
+        "Analyze bounded in-memory health histories for registered nodes through the private intelligence core. Forecasts surface directional resource pressure and data limitations without triggering remediation.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({
+        horizonHours: z.number().int().min(1).max(168).optional()
+      }),
+      outputSchema: predictiveResultSchema
+    },
+    async ({ horizonHours }) =>
+      toolResult(await callPrivateIntelligence(
+        "/v1/predictive/health",
+        predictiveHealthBundle(horizonHours)
+      ))
   );
 
   server.registerTool(
