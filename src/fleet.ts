@@ -78,14 +78,25 @@ export type FleetSnapshot = {
   limitations: string[];
 };
 
+export type FleetHealthObservation = {
+  capturedAt: string;
+  health: "healthy" | "warning" | "critical";
+  uptimeSeconds: number;
+  cpuUsagePercent: number;
+  memoryUsagePercent: number;
+  maxDiskUsagePercent: number;
+};
+
 type RegistryEntry = {
   snapshot: FleetSnapshot;
+  history: FleetHealthObservation[];
   registeredAt: string;
   updatedAt: string;
 };
 
 const registry = new Map<string, RegistryEntry>();
 const MAX_NODES = 500;
+const MAX_HEALTH_HISTORY = 96;
 
 function safeNodeId(value: string): string {
   const nodeId = value.trim();
@@ -359,6 +370,36 @@ function validateSnapshot(snapshot: FleetSnapshot): FleetSnapshot {
   };
 }
 
+function healthObservation(
+  snapshot: FleetSnapshot
+): FleetHealthObservation | null {
+  if (!snapshot.health) return null;
+  return {
+    capturedAt: snapshot.capturedAt,
+    health: snapshot.health.health,
+    uptimeSeconds: snapshot.health.uptimeSeconds,
+    cpuUsagePercent: snapshot.health.cpuUsagePercent,
+    memoryUsagePercent: snapshot.health.memoryUsagePercent,
+    maxDiskUsagePercent: snapshot.health.maxDiskUsagePercent
+  };
+}
+
+function mergeHealthHistory(
+  existing: FleetHealthObservation[],
+  observation: FleetHealthObservation | null
+): FleetHealthObservation[] {
+  const byTimestamp = new Map(
+    existing.map((item) => [item.capturedAt, item])
+  );
+  if (observation) byTimestamp.set(observation.capturedAt, observation);
+  return [...byTimestamp.values()]
+    .sort((a, b) =>
+      new Date(a.capturedAt).getTime() -
+      new Date(b.capturedAt).getTime()
+    )
+    .slice(-MAX_HEALTH_HISTORY);
+}
+
 export function registerNode(snapshot: FleetSnapshot) {
   const normalized = validateSnapshot(snapshot);
   const existing = registry.get(normalized.nodeId);
@@ -367,8 +408,13 @@ export function registerNode(snapshot: FleetSnapshot) {
   }
 
   const now = new Date().toISOString();
+  const history = mergeHealthHistory(
+    existing?.history ?? [],
+    healthObservation(normalized)
+  );
   registry.set(normalized.nodeId, {
     snapshot: normalized,
+    history,
     registeredAt: existing?.registeredAt ?? now,
     updatedAt: now
   });
@@ -379,8 +425,9 @@ export function registerNode(snapshot: FleetSnapshot) {
     updated: Boolean(existing),
     registeredAt: existing?.registeredAt ?? now,
     updatedAt: now,
+    healthObservationCount: history.length,
     persistence:
-      "v0.8 fleet registry is in-memory only and is cleared when the LocalOps process exits."
+      "v1.5 fleet registry and bounded health history are in-memory only and are cleared when the LocalOps process exits."
   };
 }
 
@@ -414,6 +461,68 @@ export function getNode(nodeId: string): FleetSnapshot {
   const entry = registry.get(key);
   if (!entry) throw new Error("Node is not registered.");
   return entry.snapshot;
+}
+
+export function nodeHealthHistory(
+  nodeId: string,
+  limit = MAX_HEALTH_HISTORY
+) {
+  const key = safeNodeId(nodeId);
+  const entry = registry.get(key);
+  if (!entry) throw new Error("Node is not registered.");
+  const safe = safeLimit(limit, MAX_HEALTH_HISTORY, MAX_HEALTH_HISTORY);
+  const observations = entry.history.slice(-safe);
+  return {
+    nodeId: entry.snapshot.nodeId,
+    label: entry.snapshot.label,
+    tags: entry.snapshot.tags,
+    observationCount: observations.length,
+    observations,
+    limitations: [
+      ...entry.snapshot.limitations,
+      ...(observations.length < 3
+        ? ["At least three health observations are required for a defensible trend forecast."]
+        : [])
+    ],
+    persistence:
+      "v1.5 health history is bounded and in-memory only; it is cleared when the LocalOps process exits."
+  };
+}
+
+export function predictiveHealthBundle(
+  horizonHours = 24,
+  nodeId?: string
+) {
+  const safeHorizon = Math.max(
+    1,
+    Math.min(Math.trunc(horizonHours), 168)
+  );
+  const entries = nodeId
+    ? [registry.get(safeNodeId(nodeId))]
+    : [...registry.values()];
+  if (nodeId && !entries[0]) {
+    throw new Error("Node is not registered.");
+  }
+  if (!nodeId && entries.length === 0) {
+    throw new Error(
+      "No registered nodes are available for predictive health analysis."
+    );
+  }
+
+  return {
+    generatedAt: new Date().toISOString(),
+    horizonHours: safeHorizon,
+    nodes: entries
+      .filter((entry): entry is RegistryEntry => Boolean(entry))
+      .slice(0, MAX_NODES)
+      .map((entry) => ({
+        nodeId: entry.snapshot.nodeId,
+        label: entry.snapshot.label,
+        tags: entry.snapshot.tags,
+        observations: entry.history.slice(-MAX_HEALTH_HISTORY),
+        limitations: [...entry.snapshot.limitations]
+      }))
+  };
 }
 
 export function nodeHealth(nodeId: string) {

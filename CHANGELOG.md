@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.5.0
+
+- Added Predictive Health Intelligence for bounded CPU, memory and disk trend analysis.
+- Added bounded in-memory per-node health history with up to 96 distinct observations.
+- Added `node_health_history`, `node_predictive_health` and `fleet_predictive_health`.
+- Predictive requests are limited to a 1-168 hour horizon and registered LocalOps node histories.
+- Private forecasts report directional slope, projected utilization, warning/critical threshold ETA and evidence-confidence coverage.
+- Forecasts return `insufficient-data` when history is too short instead of inventing a trend.
+- Evidence confidence describes observation coverage, not failure probability.
+- Predictive output never authorizes or triggers remediation.
+- Fixed v1.4 workflow status to use the same injected clock as workflow creation/expiry checks, removing a time-dependent regression.
+- Private predictive analysis remains loopback-only and authenticated.
+
 ## 1.4.0
 
 - Added Automated Remediation Workflows backed by private evidence-based remediation planning and the existing controlled-execution gateway.

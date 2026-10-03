@@ -287,8 +287,10 @@ function workflowOverallStatus(
   return "active";
 }
 
-function publicWorkflow(workflow: RemediationWorkflow) {
-  const now = Date.now();
+function publicWorkflow(
+  workflow: RemediationWorkflow,
+  now = Date.now()
+) {
   return {
     workflowId: workflow.workflowId,
     createdAt: workflow.createdAt,
@@ -463,14 +465,17 @@ export async function createRemediationWorkflow(
   });
   workflows.set(workflow.workflowId, workflow);
 
-  return publicWorkflow(workflow);
+  return publicWorkflow(workflow, nowMs(deps));
 }
 
 export function remediationWorkflowDetails(
   id: string,
   deps: WorkflowDependencies = {}
 ) {
-  return publicWorkflow(requireWorkflow(id, deps));
+  return publicWorkflow(
+    requireWorkflow(id, deps),
+    nowMs(deps)
+  );
 }
 
 export function recordRemediationStepDecision(
@@ -535,7 +540,7 @@ export function recordRemediationStepDecision(
           (note ? " Note: " + note : "")
   });
 
-  return publicWorkflow(workflow);
+  return publicWorkflow(workflow, nowMs(deps));
 }
 
 export async function prepareRemediationStep(

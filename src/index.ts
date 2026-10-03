@@ -29,7 +29,7 @@ import { registerDatabaseTools } from "./database-tools.js";
 import { registerStorageBackupTools } from "./storage-backup-tools.js";
 import { registerRemediationWorkflowTools } from "./remediation-tools.js";
 
-const VERSION = "1.4.0";
+const VERSION = "1.5.0";
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -85,7 +85,7 @@ export function createServer() {
     { name: "opschugex-localops-mcp", version: VERSION },
     {
       instructions:
-        "OpsChugex LocalOps v1.4 adds Automated Remediation Workflows on top of the production v1.3 platform. The private core creates evidence-based remediation plans, while the public MCP enforces ordered validation, R2-only workflow execution, current RBAC and allowlists, durable audit, one-time approval tokens, exact APPROVE confirmation and post-action verification. Workflow-bound tokens cannot be executed through the generic execution path. R3+ actions remain unavailable and no remediation step is automatically authorized."
+        "OpsChugex LocalOps v1.5 adds Predictive Health Intelligence on top of the production v1.4 platform. The public MCP retains bounded in-memory CPU, memory and disk history for registered nodes; the private loopback core performs bounded trend extrapolation, threshold ETA and evidence-confidence analysis over a 1-168 hour horizon. Insufficient history is reported explicitly, evidence confidence is not a failure probability, and predictive output never authorizes remediation. Existing v1.4 approval-gated R2 execution and R3+ restrictions remain unchanged."
     }
   );
 

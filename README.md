@@ -10,7 +10,7 @@
 
 OpsChugex LocalOps MCP is a cross-platform Model Context Protocol server for safely inspecting local Windows and Linux systems. It is designed as the local/private-infrastructure counterpart to the Cloud DevOps MCP Server.
 
-Version 1.4.0 adds Automated Remediation Workflows to the production LocalOps platform while retaining Network Topology, Database and Storage & Backup Intelligence. The private OpsChugex LocalOps Intelligence Core turns bounded current evidence plus the public execution-policy state into ordered remediation plans. The public MCP then enforces validation-before-mutation, fixed R2 actions only, process-bound RBAC, service allowlisting, durable audit, five-minute one-time approvals, exact `APPROVE` confirmation and post-action verification. R3+ remains manual and no workflow silently authorizes or executes a host change.
+Version 1.5.0 adds Predictive Health Intelligence to the production LocalOps platform while retaining approval-gated remediation, network topology, database, and storage/backup intelligence. The public MCP keeps up to 96 distinct in-memory health observations per registered node; the private OpsChugex LocalOps Intelligence Core analyzes CPU, memory, and disk trends over a bounded 1-168 hour horizon. Forecasts expose directional slope, projected pressure, threshold ETA, and evidence confidence. They are not failure probabilities, do not guarantee future state, and never authorize remediation.
 
 ## Why this exists
 
@@ -61,6 +61,11 @@ LocalOps starts at the operating-system layer:
 - durable execution-audit correlation with workflow and step identifiers
 - post-action verification before a controlled remediation step is marked verified
 - R3+ remediation retained as manual-only workflow guidance
+- bounded per-node health history retained in memory for predictive analysis
+- CPU, memory and disk trend extrapolation over a 1-168 hour horizon
+- evidence-confidence scoring based on observation coverage rather than failure probability
+- explicit insufficient-data results instead of fabricated forecasts
+- warning/critical resource-threshold ETA without automatic remediation
 - bounded local fleet snapshots without raw event-log storage
 - in-memory node registration and snapshot freshness tracking
 - fleet health and inventory summaries
@@ -93,7 +98,7 @@ LocalOps starts at the operating-system layer:
 
 The long-term goal is evidence correlation across endpoints, private infrastructure, networking, storage and virtualization while keeping advanced OpsChugex intelligence proprietary.
 
-## v1.4 tools
+## v1.5 tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -175,6 +180,9 @@ The long-term goal is evidence correlation across endpoints, private infrastruct
 | `register_node` | Upsert one snapshot into the local in-memory fleet registry |
 | `list_nodes` | List registered node metadata and snapshot freshness |
 | `node_health` | Show health and freshness for one registered node |
+| `node_health_history` | Return up to 96 retained in-memory CPU, memory and disk health observations for one node |
+| `node_predictive_health` | Analyze one node's retained health trend over a bounded 1-168 hour horizon through the private core |
+| `fleet_predictive_health` | Analyze retained health trends across registered nodes without triggering remediation |
 | `fleet_health` | Summarize health, stale snapshots and node states across the registry |
 | `fleet_inventory` | Return bounded fleet metadata without raw event logs |
 | `compare_nodes` | Compare two registered snapshots through the private core |
@@ -233,7 +241,7 @@ flowchart TD
     Client2 --> Core["Private OpsChugex LocalOps Intelligence Core"]
 ```
 
-The public MCP owns protocol handling, safe collectors, normalized node/fleet/infrastructure/database/backup schemas, bounded topology and remediation-workflow contracts, fixed read-only database adapters, bounded local backup metadata collection, local virtualization/storage/power adapters, the in-memory fleet registry, process-bound RBAC/policy enforcement, workflow state, one-time execution approvals, optional durable audit storage, the loopback client and operator-facing tools. The private OpsChugex intelligence core owns correlation, root-cause ranking, fleet drift, private device-health/topology reasoning, dependency-path/redundancy/failure-domain/change-impact algorithms, database health/replication/contention/pressure analysis, backup snapshot-health/recovery-readiness/risk correlation, and v1.4 remediation workflow planning/gate reasoning.
+The public MCP owns protocol handling, safe collectors, normalized node/fleet/infrastructure/database/backup schemas, bounded topology/remediation/predictive contracts, fixed read-only database adapters, bounded local backup metadata collection, local virtualization/storage/power adapters, the in-memory fleet registry and bounded node-health history, process-bound RBAC/policy enforcement, workflow state, one-time execution approvals, optional durable audit storage, the loopback client and operator-facing tools. The private OpsChugex intelligence core owns correlation, root-cause ranking, fleet drift, private device-health/topology reasoning, dependency-path/redundancy/failure-domain/change-impact algorithms, database health/replication/contention/pressure analysis, backup snapshot-health/recovery-readiness/risk correlation, remediation workflow planning/gate reasoning, and v1.5 predictive-health trend/threshold analysis.
 
 ## Quickstart
 
@@ -263,7 +271,7 @@ npm run dev
 
 ### Optional private intelligence core
 
-The correlation, root-cause, private fleet, private-infrastructure, database, backup, network-topology and v1.4 remediation-planning tools require the private OpsChugex LocalOps Intelligence Core to be running locally. Configure the public MCP process with:
+The correlation, root-cause, private fleet, private-infrastructure, database, backup, network-topology, remediation-planning and v1.5 predictive-health tools require the private OpsChugex LocalOps Intelligence Core to be running locally. Configure the public MCP process with:
 
 ```text
 LOCALOPS_INTELLIGENCE_URL=http://127.0.0.1:43123
@@ -326,9 +334,17 @@ The workflow sequence is intentionally split:
 
 Workflow execution requires `LOCALOPS_EXECUTION_ENABLED=true`, the existing role/allowlist checks, and `LOCALOPS_AUDIT_PERSISTENCE=true`. Raw approval tokens are never stored in workflow state or audit records. R3+ steps are guidance only and cannot be executed by LocalOps.
 
+### v1.5 predictive health
+
+Every successful `register_node` call with health metrics contributes one timestamped observation to that node's bounded in-memory history. Duplicate capture timestamps replace the earlier observation, histories are capped at 96 entries per node, and all history disappears when the LocalOps process exits.
+
+`node_predictive_health` and `fleet_predictive_health` send only the bounded normalized history to the loopback private core. The selected forecast horizon is restricted to 1-168 hours. At least three distinct observations spanning at least one hour are required; otherwise LocalOps returns `insufficient-data`.
+
+The private core estimates linear CPU, memory and disk trends and compares them with the same LocalOps warning/critical resource thresholds. Evidence confidence measures history coverage only. It is not a probability of failure, hardware-health guarantee, capacity commitment, or authorization to remediate.
+
 ## Safety model
 
-v1.4 keeps the existing controlled-execution boundary and adds workflow orchestration without adding silent authorization. Remediation plans remain evidence-driven, R2-only for execution, explicitly approved and post-action verified:
+v1.5 keeps the existing controlled-execution and workflow boundaries while adding analysis-only Predictive Health Intelligence. Forecasts remain bounded evidence extrapolations and cannot authorize execution:
 
 ```text
 R0 READ                     allowed
@@ -344,6 +360,7 @@ DATABASE INTELLIGENCE          fixed read-only queries, named profiles only
 STORAGE / BACKUP INTELLIGENCE  bounded metadata, named local profiles only
 NETWORK TOPOLOGY INTELLIGENCE  bounded submitted graphs, analysis-only
 REMEDIATION WORKFLOWS           ordered planning + approval orchestration; no auto-authorization
+PREDICTIVE HEALTH                bounded in-memory history + private trend analysis; no execution
 ```
 
 Important controls:
@@ -397,6 +414,13 @@ Important controls:
 - workflow state is in-memory, capped at 100 retained workflows and expires after 30 minutes
 - R3+ remediation stays manual and is never mapped to an executable workflow action
 - no workflow silently authorizes, chains or executes multiple host mutations
+- predictive health history is in-memory only, capped at 96 observations per node, and contains normalized health/resource metrics rather than raw event logs
+- predictive horizons are bounded to 1-168 hours
+- at least three distinct observations spanning at least one hour are required before a directional forecast is considered defensible
+- evidence confidence measures observation count/time-span coverage, not failure probability
+- predictive analysis uses linear trend extrapolation and explicitly reports that it does not model workload schedules, seasonality, deployments or hardware failure mechanisms
+- predictive results never authorize or trigger remediation
+- the private predictive API exposes analysis only; no predictive execution route exists
 - fleet snapshots contain summarized security-change categories/counts, not raw event messages
 - fleet registry is in-memory only and capped at 500 nodes
 - registering a snapshot records caller-supplied node evidence; it does not authenticate or attest the identity of that node
@@ -448,9 +472,9 @@ Some platform collectors may require local permission to inspect specific proces
 
 This repository is the public implementation and portfolio-facing gateway.
 
-The separate private **OpsChugex LocalOps Intelligence Core** implements correlation, root-cause intelligence, fleet drift, private device-health/topology reasoning, dependency-path/redundancy/failure-domain/change-impact analysis, database health/replication/contention/pressure analysis, backup snapshot-health/recovery-readiness/risk correlation, and v1.4 evidence-based remediation workflow planning. Future private capabilities include predictive health and deeper cross-node/cross-service incident correlation.
+The separate private **OpsChugex LocalOps Intelligence Core** implements correlation, root-cause intelligence, fleet drift, private device-health/topology reasoning, dependency-path/redundancy/failure-domain/change-impact analysis, database health/replication/contention/pressure analysis, backup snapshot-health/recovery-readiness/risk correlation, remediation workflow planning, and v1.5 predictive-health trend/threshold analysis. Future private capabilities include deeper cross-node/cross-service incident correlation.
 
-The public repository contains safe collection, bounded snapshots, schemas, fixed read-only database adapters, bounded local backup metadata collectors, bounded topology/remediation contracts, local infrastructure adapters, in-memory workflow/fleet state, policy enforcement, approval orchestration, audit integration and the loopback client. Proprietary correlation, ranking, drift, topology, database-analysis, backup-risk and remediation-planning algorithms are not included in this MIT repository.
+The public repository contains safe collection, bounded snapshots, schemas, fixed read-only database adapters, bounded local backup metadata collectors, bounded topology/remediation/predictive contracts, local infrastructure adapters, in-memory workflow/fleet/health-history state, policy enforcement, approval orchestration, audit integration and the loopback client. Proprietary correlation, ranking, drift, topology, database-analysis, backup-risk, remediation-planning and predictive-health algorithms are not included in this MIT repository.
 
 ## Roadmap
 
@@ -470,6 +494,7 @@ The public repository contains safe collection, bounded snapshots, schemas, fixe
 | 1.2 | Storage and backup intelligence, completed |
 | 1.3 | Network topology intelligence, completed |
 | 1.4 | Automated remediation workflows, completed |
+| 1.5 | Predictive health intelligence, completed |
 
 ## Development principles
 
