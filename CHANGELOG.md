@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.6.0
+
+- Added Cross-Node Incident Correlation across bounded registered fleet snapshots.
+- Added `fleet_incident_correlation` for repeated health, resource-pressure, service-state and security-change evidence across nodes.
+- Added `fleet_incident_timeline` for a bounded chronological snapshot timeline with explicit timestamp limitations.
+- Added `fleet_shared_cause_analysis` for evidence-backed shared-cause hypotheses with evidence-confidence scoring that is not a causation probability.
+- Added `fleet_incident_scope` to classify observed impact as none, localized, multi-node or fleet-wide and surface common affected tags.
+- Cross-node analysis is performed by the private loopback intelligence core; the public MCP exposes only bounded registered snapshot contracts.
+- Correlation does not prove causation and never authorizes remediation or host mutation.
+- Private cross-node routes remain authenticated, loopback-only and analysis-only.
+
 ## 1.5.0
 
 - Added Predictive Health Intelligence for bounded CPU, memory and disk trend analysis.

@@ -207,6 +207,82 @@ const predictiveResultSchema = z.object({
   limitations: z.array(z.string())
 });
 
+const incidentSignalSchema = z.object({
+  id: z.string(),
+  category: z.enum([
+    "health-state",
+    "resource-pressure",
+    "service-state",
+    "security-change"
+  ]),
+  severity: z.enum(["low", "medium", "high"]),
+  nodeIds: z.array(z.string()),
+  evidenceCount: z.number(),
+  summary: z.string()
+});
+
+const incidentCorrelationSchema = z.object({
+  engineVersion: z.literal("1.6.0"),
+  generatedAt: z.string(),
+  nodeCount: z.number(),
+  correlatedNodeCount: z.number(),
+  signalCount: z.number(),
+  signals: z.array(incidentSignalSchema),
+  interpretation: z.string(),
+  limitations: z.array(z.string())
+});
+
+const incidentTimelineSchema = z.object({
+  engineVersion: z.literal("1.6.0"),
+  generatedAt: z.string(),
+  nodeCount: z.number(),
+  entryCount: z.number(),
+  entries: z.array(z.object({
+    timestamp: z.string(),
+    nodeId: z.string(),
+    category: z.enum(["health", "security-change", "service-state"]),
+    severity: z.enum(["low", "medium", "high"]),
+    summary: z.string()
+  })),
+  interpretation: z.string(),
+  limitations: z.array(z.string())
+});
+
+const sharedCauseSchema = z.object({
+  engineVersion: z.literal("1.6.0"),
+  generatedAt: z.string(),
+  nodeCount: z.number(),
+  candidateCount: z.number(),
+  candidates: z.array(z.object({
+    id: z.string(),
+    category: z.string(),
+    hypothesis: z.string(),
+    evidenceConfidence: z.number().min(0).max(100),
+    confidenceBand: z.enum(["low", "medium", "high"]),
+    affectedNodeIds: z.array(z.string()),
+    supportingSignalIds: z.array(z.string()),
+    rationale: z.string()
+  })),
+  interpretation: z.string(),
+  limitations: z.array(z.string())
+});
+
+const incidentScopeSchema = z.object({
+  engineVersion: z.literal("1.6.0"),
+  generatedAt: z.string(),
+  scope: z.enum(["none", "localized", "multi-node", "fleet-wide"]),
+  nodeCount: z.number(),
+  affectedNodeCount: z.number(),
+  affectedNodeIds: z.array(z.string()),
+  unaffectedNodeIds: z.array(z.string()),
+  commonAffectedTags: z.array(z.object({
+    tag: z.string(),
+    affectedNodeCount: z.number()
+  })),
+  interpretation: z.string(),
+  limitations: z.array(z.string())
+});
+
 async function runFleetDrift(route: string, baselineNodeId: string) {
   getNode(baselineNodeId);
   const bundle = {
@@ -364,6 +440,74 @@ export function registerFleetTools(server: McpServer) {
       toolResult(await callPrivateIntelligence(
         "/v1/predictive/health",
         predictiveHealthBundle(horizonHours)
+      ))
+  );
+
+  server.registerTool(
+    "fleet_incident_correlation",
+    {
+      title: "Fleet Incident Correlation",
+      description:
+        "Correlate repeated health, resource, service and security-change evidence across registered node snapshots through the private intelligence core. Correlation is investigative evidence, not proof of causation.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({}),
+      outputSchema: incidentCorrelationSchema
+    },
+    async () =>
+      toolResult(await callPrivateIntelligence(
+        "/v1/fleet/incident-correlation",
+        fleetBundle()
+      ))
+  );
+
+  server.registerTool(
+    "fleet_incident_timeline",
+    {
+      title: "Fleet Incident Timeline",
+      description:
+        "Build a bounded chronological cross-node timeline from registered snapshot evidence. Entries are anchored to snapshot capture times rather than claiming original event timestamps.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({}),
+      outputSchema: incidentTimelineSchema
+    },
+    async () =>
+      toolResult(await callPrivateIntelligence(
+        "/v1/fleet/incident-timeline",
+        fleetBundle()
+      ))
+  );
+
+  server.registerTool(
+    "fleet_shared_cause_analysis",
+    {
+      title: "Fleet Shared Cause Analysis",
+      description:
+        "Rank evidence-backed shared-cause hypotheses across registered nodes. Evidence confidence measures cross-node coverage and is not a probability of causation.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({}),
+      outputSchema: sharedCauseSchema
+    },
+    async () =>
+      toolResult(await callPrivateIntelligence(
+        "/v1/fleet/shared-cause-analysis",
+        fleetBundle()
+      ))
+  );
+
+  server.registerTool(
+    "fleet_incident_scope",
+    {
+      title: "Fleet Incident Scope",
+      description:
+        "Classify the observed incident footprint as none, localized, multi-node or fleet-wide using bounded registered snapshot evidence and common node tags.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({}),
+      outputSchema: incidentScopeSchema
+    },
+    async () =>
+      toolResult(await callPrivateIntelligence(
+        "/v1/fleet/incident-scope",
+        fleetBundle()
       ))
   );
 
