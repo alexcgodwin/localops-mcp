@@ -18,6 +18,8 @@ const saved = {
   execution: process.env.LOCALOPS_EXECUTION_ENABLED,
   services: process.env.LOCALOPS_ALLOWED_SERVICES,
   audit: process.env.LOCALOPS_AUDIT_PERSISTENCE,
+  investigationPersistence:
+    process.env.LOCALOPS_INVESTIGATION_PERSISTENCE,
   dataDir: process.env.LOCALOPS_DATA_DIR,
   databaseProfiles: process.env.LOCALOPS_DATABASE_PROFILES,
   backupProfiles: process.env.LOCALOPS_BACKUP_PROFILES
@@ -37,6 +39,10 @@ afterEach(async () => {
   restore("execution", "LOCALOPS_EXECUTION_ENABLED");
   restore("services", "LOCALOPS_ALLOWED_SERVICES");
   restore("audit", "LOCALOPS_AUDIT_PERSISTENCE");
+  restore(
+    "investigationPersistence",
+    "LOCALOPS_INVESTIGATION_PERSISTENCE"
+  );
   restore("dataDir", "LOCALOPS_DATA_DIR");
   restore("databaseProfiles", "LOCALOPS_DATABASE_PROFILES");
   restore("backupProfiles", "LOCALOPS_BACKUP_PROFILES");
@@ -123,6 +129,16 @@ describe("v1.0 production readiness", () => {
     const checks = productionReadinessInput();
     expect(
       checks.find((item) => item.id === "durable-audit")?.status
+    ).toBe("pass");
+  });
+
+  it("reports investigation persistence readiness when enabled", () => {
+    process.env.LOCALOPS_INVESTIGATION_PERSISTENCE = "true";
+
+    const checks = productionReadinessInput();
+    expect(
+      checks.find((item) => item.id === "investigation-persistence")
+        ?.status
     ).toBe("pass");
   });
 

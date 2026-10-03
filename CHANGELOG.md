@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.1.0
+
+- Added Investigation Session Memory & Evidence Checkpoints on top of the v2 operational knowledge graph.
+- Added `create_investigation_session`, `list_investigation_sessions`, `investigation_session_details`, `record_investigation_checkpoint`, `add_investigation_question`, `update_investigation_question`, `set_investigation_session_status`, `investigation_session_status` and `investigation_progress_analysis`.
+- Added a bounded 50-session registry with at most 100 checkpoints and 50 questions per session.
+- Added optional local persistence through `LOCALOPS_INVESTIGATION_PERSISTENCE=true` using atomic replacement under the LocalOps data directory.
+- Checkpoints store one fixed review kind and at most 20 normalized evidence references; they do not store raw logs, credentials, command output or approval tokens.
+- Session completion is blocked while tracked questions remain open; completed sessions reject new checkpoints and questions.
+- Added private documentation-coverage, question-state and historical-context analysis through `/v2/investigations/progress`.
+- Review coverage measures recorded checkpoint categories only and is not confidence, root-cause probability or remediation readiness.
+- No investigation execution route was added or allowlisted.
+
 ## 2.0.0
 
 - Added Operational Knowledge Graph & Guided Investigation as the first major v2 intelligence layer.

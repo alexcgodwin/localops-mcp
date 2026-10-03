@@ -331,6 +331,17 @@ export function productionReadinessInput() {
       : "Durable incident memory is disabled; incident cases will be process-local only."
   });
 
+  const investigationPersistence = boolEnv(
+    "LOCALOPS_INVESTIGATION_PERSISTENCE"
+  );
+  checks.push({
+    id: "investigation-persistence",
+    status: investigationPersistence ? "pass" : "warn",
+    detail: investigationPersistence
+      ? "Durable investigation-session metadata is enabled with a 50-session bound under the LocalOps data directory."
+      : "Durable investigation-session persistence is disabled; sessions will be process-local only."
+  });
+
   try {
     const profiles = databaseProfiles();
     checks.push({

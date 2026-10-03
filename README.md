@@ -10,7 +10,7 @@
 
 OpsChugex LocalOps MCP is a cross-platform Model Context Protocol server for safely inspecting local Windows and Linux systems. It is designed as the local/private-infrastructure counterpart to the Cloud DevOps MCP Server.
 
-Version 2.0.0 adds an Operational Knowledge Graph & Guided Investigation layer while retaining Durable Incident Knowledge, structured search, case clustering, recurrence analysis, Cross-Node Incident Correlation, Predictive Health Intelligence and the existing approval-gated remediation, topology, database, and storage/backup capabilities. LocalOps can build bounded graphs linking retained cases to normalized signals, tags, cause categories, outcomes and resolution categories, trace relationship paths between incidents, look up cases by graph entity, and generate ordered non-mutating investigation steps from current and historical evidence. Graph paths and similarity remain descriptive evidence, not probability, causation or remediation authorization.
+Version 2.1.0 adds Investigation Session Memory & Evidence Checkpoints while retaining the v2 Operational Knowledge Graph, guided investigation, durable incident knowledge, structured search, case clustering, recurrence analysis, Cross-Node Incident Correlation, Predictive Health Intelligence and the existing approval-gated remediation, topology, database, and storage/backup capabilities. LocalOps can create bounded case-linked investigation sessions, record normalized evidence-review checkpoints, track open/resolved/deferred questions, optionally persist session metadata locally, and analyze documentation coverage with similar historical-case context. Review coverage is documentation progress only, not confidence, root-cause probability or remediation readiness.
 
 ## Why this exists
 
@@ -85,6 +85,9 @@ LocalOps starts at the operating-system layer:
 - graph relationship tracing between current and historical incidents
 - exact entity-to-case lookup for signals, tags, causes, outcomes and resolution categories
 - guided non-mutating incident investigation plans built from current and historical evidence
+- bounded case-linked investigation sessions with checkpoint and question tracking
+- optional durable investigation-session metadata across LocalOps restarts
+- private investigation-progress analysis with documentation-coverage and historical-case context
 - bounded local fleet snapshots without raw event-log storage
 - in-memory node registration and snapshot freshness tracking
 - fleet health and inventory summaries
@@ -117,7 +120,7 @@ LocalOps starts at the operating-system layer:
 
 The long-term goal is evidence correlation across endpoints, private infrastructure, networking, storage and virtualization while keeping advanced OpsChugex intelligence proprietary.
 
-## v2.0 tools
+## v2.1 tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -223,6 +226,15 @@ The long-term goal is evidence correlation across endpoints, private infrastruct
 | `incident_knowledge_trace` | Trace bounded graph paths from one incident to related historical cases |
 | `incident_entity_cases` | Find retained cases linked to one exact signal, tag, cause, outcome or resolution entity |
 | `guided_incident_investigation` | Build an ordered read-only investigation plan from current and historical evidence |
+| `create_investigation_session` | Create a bounded case-linked investigation session without changing host state |
+| `list_investigation_sessions` | List investigation-session summaries, checkpoint counts and open-question counts |
+| `investigation_session_details` | Read one session with bounded checkpoints and tracked questions |
+| `record_investigation_checkpoint` | Record normalized evidence-review references in an open or paused session |
+| `add_investigation_question` | Add one bounded investigation question for later resolution or deferral |
+| `update_investigation_question` | Mark a tracked question open, resolved or deferred |
+| `set_investigation_session_status` | Set a session open, paused or completed; completion blocks on open questions |
+| `investigation_session_status` | Show session-memory bounds and optional persistence state |
+| `investigation_progress_analysis` | Analyze documented review coverage, question state and similar historical cases |
 | `fleet_health` | Summarize health, stale snapshots and node states across the registry |
 | `fleet_inventory` | Return bounded fleet metadata without raw event logs |
 | `compare_nodes` | Compare two registered snapshots through the private core |
@@ -420,9 +432,17 @@ All v1.9 retrieval stays inside the authenticated loopback private core. No exte
 
 `guided_incident_investigation` creates an ordered five-step read-only investigation plan using the selected case, shared evidence and related historical outcomes. The plan never contains executable shell commands, never creates an approval token, and never authorizes remediation.
 
+### v2.1 investigation session memory and evidence checkpoints
+
+Investigation sessions are linked to an existing stored incident case and are capped at 50 retained sessions, 100 checkpoints per session and 50 tracked questions per session. Checkpoints store a fixed review kind plus at most 20 normalized evidence references; they do not store raw event logs, packet contents, command output, credentials or approval tokens.
+
+Set `LOCALOPS_INVESTIGATION_PERSISTENCE=true` to persist bounded session metadata to `investigation-sessions.json` under the existing LocalOps data directory. Persistence is disabled by default and uses atomic file replacement plus restrictive permissions where supported.
+
+`investigation_progress_analysis` reports which checkpoint categories have been documented, open/resolved/deferred question counts, missing review areas and evidence-overlapping historical cases. Its coverage percentage measures recorded documentation categories only; it is not confidence, root-cause probability, remediation readiness or authorization.
+
 ## Safety model
 
-v2.0 keeps the existing controlled-execution, remediation, predictive, cross-node, recurrence and durable-knowledge boundaries while adding bounded graph reasoning and guided investigation. Graph and investigation results are analysis only and cannot authorize execution:
+v2.1 keeps the existing controlled-execution, remediation, predictive, cross-node, recurrence, durable-knowledge and graph boundaries while adding bounded investigation-session state and progress analysis. Session writes modify LocalOps metadata only and cannot authorize execution:
 
 ```text
 R0 READ                     allowed
@@ -442,6 +462,7 @@ PREDICTIVE HEALTH                bounded in-memory history + private trend analy
 CROSS-NODE INCIDENT               bounded registered snapshots + private correlation; no execution
 INCIDENT KNOWLEDGE                 max 200 normalized cases; optional local persistence; no raw logs or execution
 OPERATIONAL KNOWLEDGE GRAPH         max 1200 nodes / 4000 edges; read-only relationship analysis
+INVESTIGATION SESSION MEMORY         max 50 sessions / 100 checkpoints / 50 questions per session
 ```
 
 Important controls:
@@ -525,7 +546,14 @@ Important controls:
 - v2.0 tracing is bounded to depth 4 and 20 paths; graph paths are investigation aids, not causal proof
 - v2.0 entity lookup accepts one exact normalized value and returns at most 50 cases
 - guided investigation returns non-mutating evidence-review steps only and never returns executable commands or approval tokens
-- `/v2/knowledge/execute` is not allowlisted by the public client and no v2 execution endpoint exists
+- `/v2/knowledge/execute` is not allowlisted by the public client and no v2 knowledge execution endpoint exists
+- investigation sessions are capped at 50; each session is capped at 100 checkpoints and 50 questions
+- checkpoint evidence references are capped at 20 values per checkpoint and 128 characters per value
+- investigation persistence is disabled by default and, when enabled, stays under the LocalOps data directory
+- session metadata excludes raw event logs, packet data, credentials, command output, approval tokens and remediation scripts
+- completed sessions reject new checkpoints/questions and cannot be completed while questions remain open
+- review coverage counts documented checkpoint categories only and is not confidence or remediation readiness
+- `/v2/investigations/progress` is the only v2.1 private investigation route allowlisted by the public client; no investigation execution route exists
 - fleet snapshots contain summarized security-change categories/counts, not raw event messages
 - fleet registry is in-memory only and capped at 500 nodes
 - registering a snapshot records caller-supplied node evidence; it does not authenticate or attest the identity of that node
@@ -577,9 +605,9 @@ Some platform collectors may require local permission to inspect specific proces
 
 This repository is the public implementation and portfolio-facing gateway.
 
-The separate private **OpsChugex LocalOps Intelligence Core** implements correlation, root-cause intelligence, fleet drift, predictive-health trend/threshold analysis, cross-node incident correlation, incident fingerprinting, recurrence/similarity analysis, resolution-pattern and historical-resolution analysis, structured incident retrieval, nearest-case matching, similarity clustering, v2.0 operational knowledge-graph construction, relationship tracing and guided-investigation reasoning, shared-cause ranking and scope analysis, private device-health/topology reasoning, dependency-path/redundancy/failure-domain/change-impact analysis, database health/replication/contention/pressure analysis, backup snapshot-health/recovery-readiness/risk correlation, and remediation workflow planning.
+The separate private **OpsChugex LocalOps Intelligence Core** implements correlation, root-cause intelligence, fleet drift, predictive-health trend/threshold analysis, cross-node incident correlation, incident fingerprinting, recurrence/similarity analysis, resolution-pattern and historical-resolution analysis, structured incident retrieval, nearest-case matching, similarity clustering, operational knowledge-graph construction, relationship tracing, guided-investigation reasoning, v2.1 investigation-progress analysis, shared-cause ranking and scope analysis, private device-health/topology reasoning, dependency-path/redundancy/failure-domain/change-impact analysis, database health/replication/contention/pressure analysis, backup snapshot-health/recovery-readiness/risk correlation, and remediation workflow planning.
 
-The public repository contains safe collection, bounded snapshots, schemas, fixed read-only database adapters, bounded local backup metadata collectors, bounded topology/remediation/predictive/cross-node/incident-memory/search/knowledge-graph contracts, local infrastructure adapters, in-memory workflow/fleet/health-history state, optional durable normalized incident-case storage, structured outcome recording, policy enforcement, approval orchestration, audit integration and the loopback client. Proprietary correlation, incident fingerprinting, recurrence/similarity analysis, resolution-pattern analysis, structured retrieval ranking, neighbor matching, case clustering, knowledge-graph construction, relationship tracing, guided-investigation reasoning, shared-cause ranking, scope analysis, drift, topology, database-analysis, backup-risk, remediation-planning and predictive-health algorithms are not included in this MIT repository.
+The public repository contains safe collection, bounded snapshots, schemas, fixed read-only database adapters, bounded local backup metadata collectors, bounded topology/remediation/predictive/cross-node/incident-memory/search/knowledge-graph/investigation-session contracts, local infrastructure adapters, in-memory workflow/fleet/health-history state, optional durable normalized incident-case and investigation-session storage, structured outcome/checkpoint/question recording, policy enforcement, approval orchestration, audit integration and the loopback client. Proprietary correlation, incident fingerprinting, recurrence/similarity analysis, resolution-pattern analysis, structured retrieval ranking, neighbor matching, case clustering, knowledge-graph construction, relationship tracing, guided-investigation reasoning, investigation-progress analysis, shared-cause ranking, scope analysis, drift, topology, database-analysis, backup-risk, remediation-planning and predictive-health algorithms are not included in this MIT repository.
 
 ## Roadmap
 
@@ -605,6 +633,7 @@ The public repository contains safe collection, bounded snapshots, schemas, fixe
 | 1.8 | Durable incident knowledge and resolution intelligence, completed |
 | 1.9 | Incident knowledge search and case clustering, completed |
 | 2.0 | Operational knowledge graph and guided investigation, completed |
+| 2.1 | Investigation session memory and evidence checkpoints, completed |
 
 ## Development principles
 
