@@ -28,8 +28,9 @@ import { registerPlatformTools } from "./platform-tools.js";
 import { registerDatabaseTools } from "./database-tools.js";
 import { registerStorageBackupTools } from "./storage-backup-tools.js";
 import { registerRemediationWorkflowTools } from "./remediation-tools.js";
+import { registerIncidentMemoryTools } from "./incident-memory-tools.js";
 
-const VERSION = "1.6.0";
+const VERSION = "1.7.0";
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -85,7 +86,7 @@ export function createServer() {
     { name: "opschugex-localops-mcp", version: VERSION },
     {
       instructions:
-        "OpsChugex LocalOps v1.6 adds Cross-Node Incident Correlation on top of Predictive Health Intelligence. Registered node snapshots can be correlated for repeated health, resource, service and security-change evidence, a coarse cross-node snapshot timeline, shared-cause hypotheses and incident scope. Correlation is evidence for investigation, not verified causation or a probability of cause, and no v1.6 analysis authorizes remediation. Existing approval-gated R2 execution and R3+ restrictions remain unchanged."
+        "OpsChugex LocalOps v1.7 adds Incident Memory & Recurrence Intelligence on top of Cross-Node Incident Correlation. LocalOps can retain up to 200 normalized incident fingerprints for the current process, compare cases, detect evidence-overlap recurrence patterns and summarize repeated signals. Stored incident memory excludes raw event logs, packet data, credentials and approval tokens. Similarity is investigative evidence, not recurrence probability or proof of a shared root cause, and no v1.7 analysis authorizes remediation. Existing approval-gated R2 execution and R3+ restrictions remain unchanged."
     }
   );
 
@@ -285,6 +286,7 @@ export function createServer() {
   registerDatabaseTools(server);
   registerStorageBackupTools(server);
   registerRemediationWorkflowTools(server);
+  registerIncidentMemoryTools(server);
 
   return server;
 }

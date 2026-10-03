@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.7.0
+
+- Added Incident Memory & Recurrence Intelligence on top of v1.6 Cross-Node Incident Correlation.
+- Added `capture_incident_case`, `list_incident_cases`, `incident_case_details`, `compare_incident_cases`, `incident_recurrence_analysis` and `incident_history_summary`.
+- Added a bounded 200-case in-memory incident registry containing normalized fingerprints rather than raw event logs.
+- Incident fingerprints contain bounded signal IDs/categories, affected node IDs, common tags, cause categories, scope, severity and a stable private-core signature.
+- Added private evidence-overlap comparison with none/weak/possible/strong recurrence bands.
+- Added bounded recurrence analysis and history summaries for repeated signals, tags and cause categories.
+- Incident similarity is investigative evidence, not recurrence probability or proof of a shared root cause.
+- Incident memory excludes raw event logs, packet data, credentials, command output and approval tokens.
+- Added fixed authenticated loopback routes under `/v1/incidents/*`; no incident execution or remediation route exists.
+
 ## 1.6.0
 
 - Added Cross-Node Incident Correlation across bounded registered fleet snapshots.
