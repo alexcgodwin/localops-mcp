@@ -1,7 +1,7 @@
 {
   "name": "opschugex-localops-mcp",
-  "version": "1.3.0",
-  "description": "OpsChugex LocalOps MCP for local infrastructure, endpoint and systems intelligence on Windows and Linux.",
+  "version": "1.4.0",
+  "description": "OpsChugex LocalOps MCP for local infrastructure, endpoint, database, backup, topology and approval-gated remediation intelligence on Windows and Linux.",
   "type": "module",
   "mcpName": "io.github.alexcgodwin/localops-mcp",
   "bin": {
@@ -30,7 +30,12 @@
     "windows",
     "linux",
     "operations",
-    "security"
+    "security",
+    "network-topology",
+    "database",
+    "backup",
+    "remediation",
+    "automation"
   ],
   "author": "Alex C. Godwin",
   "license": "MIT",

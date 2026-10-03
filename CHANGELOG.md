@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.4.0
+
+- Added Automated Remediation Workflows backed by private evidence-based remediation planning and the existing controlled-execution gateway.
+- Added `remediation_workflow_status`, `create_remediation_workflow`, `remediation_workflow_details`, `record_remediation_step`, `prepare_remediation_step` and `execute_approved_remediation_step`.
+- Added ordered workflow gates so validation steps must be completed before later controlled R2 steps can be prepared.
+- Added a 30-minute bounded in-memory workflow lifetime and a 100-workflow retention cap.
+- Workflow state never stores raw approval tokens; it stores only a SHA-256 token binding for matching the later execution request.
+- Workflow-bound approval tokens cannot be consumed through the generic `execute_approved_action` path and must match the originating workflow and step.
+- v1.4 workflow execution additionally requires durable audit persistence even though generic v1.0 R2 execution remains backward compatible.
+- Execution audit records now carry optional workflow and workflow-step identifiers without storing approval tokens.
+- R3+ remediation remains manual and unavailable through execution tools.
+- No workflow automatically authorizes or silently executes a host change.
+
 ## 1.3.0
 
 - Added Network Topology Intelligence on top of the existing private-infrastructure graph model.

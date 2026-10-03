@@ -339,6 +339,55 @@ describe("approval-gated execution", () => {
     expect(audit.persistence).toContain("in-memory");
   });
 
+  it("binds workflow approval tokens to the matching workflow execution path", async () => {
+    const proposal = await proposeExecution(
+      {
+        action: "restart_service",
+        serviceName: "DemoService",
+        workflowContext: {
+          workflowId: "rwf-test",
+          workflowStepId: "step-2"
+        }
+      },
+      windowsServiceRunner(),
+      "win32"
+    );
+
+    await expect(
+      executeApprovedAction(
+        {
+          approvalToken: proposal.approvalToken,
+          confirmation: "APPROVE"
+        },
+        windowsServiceRunner(),
+        "win32"
+      )
+    ).rejects.toThrow("Workflow-bound approval token");
+
+    const result = await executeApprovedAction(
+      {
+        approvalToken: proposal.approvalToken,
+        confirmation: "APPROVE",
+        workflowContext: {
+          workflowId: "rwf-test",
+          workflowStepId: "step-2"
+        }
+      },
+      windowsServiceRunner(),
+      "win32"
+    );
+
+    expect(result.workflowId).toBe("rwf-test");
+    expect(result.workflowStepId).toBe("step-2");
+    expect(result.verified).toBe(true);
+
+    const audit = recentExecutionAudit(1);
+    expect(audit.records[0]).toMatchObject({
+      workflowId: "rwf-test",
+      workflowStepId: "step-2"
+    });
+  });
+
   it("records a failed command as attempted but unverified", async () => {
     const proposal = await proposeExecution(
       { action: "refresh_dns" },

@@ -25,6 +25,8 @@ type ApprovalRecord = {
   action: ControlledAction;
   target: string | null;
   parameters: Record<string, unknown>;
+  workflowId: string | null;
+  workflowStepId: string | null;
   createdAt: string;
   expiresAt: string;
   consumed: boolean;
@@ -43,6 +45,8 @@ export type AuditRecord = {
   verified: boolean;
   result: string;
   rollback: string;
+  workflowId: string | null;
+  workflowStepId: string | null;
 };
 
 const approvals = new Map<string, ApprovalRecord>();
@@ -122,7 +126,9 @@ async function persistAudit(record: AuditRecord) {
       executed: record.executed,
       verified: record.verified,
       outcome:
-        record.executed && record.verified ? "success" : "failure"
+        record.executed && record.verified ? "success" : "failure",
+      workflowId: record.workflowId,
+      workflowStepId: record.workflowStepId
     });
     return {
       enabled: true,
@@ -186,6 +192,10 @@ export async function proposeExecution(
     serviceName?: string;
     olderThanHours?: number;
     maxFiles?: number;
+    workflowContext?: {
+      workflowId: string;
+      workflowStepId: string;
+    };
   },
   runner: CommandRunner = defaultCommandRunner,
   platform: Platform = process.platform
@@ -230,6 +240,21 @@ export async function proposeExecution(
         : "systemd-resolved DNS cache where available";
   }
 
+  const workflowId = input.workflowContext?.workflowId ?? null;
+  const workflowStepId = input.workflowContext?.workflowStepId ?? null;
+  if (
+    workflowId !== null &&
+    !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(workflowId)
+  ) {
+    throw new Error("workflowId contains unsupported characters.");
+  }
+  if (
+    workflowStepId !== null &&
+    !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(workflowStepId)
+  ) {
+    throw new Error("workflowStepId contains unsupported characters.");
+  }
+
   const token = approvalToken();
   const createdAt = new Date();
   const expiresAt = new Date(createdAt.getTime() + APPROVAL_TTL_MS);
@@ -239,6 +264,8 @@ export async function proposeExecution(
     action: input.action,
     target,
     parameters,
+    workflowId,
+    workflowStepId,
     createdAt: createdAt.toISOString(),
     expiresAt: expiresAt.toISOString(),
     consumed: false
@@ -253,6 +280,8 @@ export async function proposeExecution(
     riskTier: "R2" as const,
     preflight,
     parameters,
+    workflowId,
+    workflowStepId,
     expiresAt: approval.expiresAt,
     confirmationRequired: "APPROVE",
     rollback: actionRollback(input.action, target),
@@ -373,6 +402,10 @@ export async function executeApprovedAction(
   input: {
     approvalToken: string;
     confirmation: string;
+    workflowContext?: {
+      workflowId: string;
+      workflowStepId: string;
+    };
   },
   runner: CommandRunner = defaultCommandRunner,
   platform: Platform = process.platform
@@ -393,6 +426,20 @@ export async function executeApprovedAction(
   }
   if (approval.consumed) {
     throw new Error("Approval token has already been consumed.");
+  }
+  if (
+    approval.workflowId !== null ||
+    approval.workflowStepId !== null
+  ) {
+    if (
+      !input.workflowContext ||
+      input.workflowContext.workflowId !== approval.workflowId ||
+      input.workflowContext.workflowStepId !== approval.workflowStepId
+    ) {
+      throw new Error(
+        "Workflow-bound approval token must be executed through its matching remediation workflow step."
+      );
+    }
   }
   if (new Date(approval.expiresAt).getTime() <= Date.now()) {
     approvals.delete(input.approvalToken);
@@ -452,7 +499,9 @@ export async function executeApprovedAction(
       executed: true,
       verified,
       result: JSON.stringify(result).slice(0, 2000),
-      rollback: actionRollback(approval.action, approval.target)
+      rollback: actionRollback(approval.action, approval.target),
+      workflowId: approval.workflowId,
+      workflowStepId: approval.workflowStepId
     });
 
     const durableAudit = await persistAudit(audit);
@@ -465,6 +514,8 @@ export async function executeApprovedAction(
       verified,
       result,
       rollback: audit.rollback,
+      workflowId: audit.workflowId,
+      workflowStepId: audit.workflowStepId,
       auditId: audit.id,
       durableAudit
     };
@@ -482,7 +533,9 @@ export async function executeApprovedAction(
       executed: executionAttempted,
       verified: false,
       result: message.slice(0, 2000),
-      rollback: actionRollback(approval.action, approval.target)
+      rollback: actionRollback(approval.action, approval.target),
+      workflowId: approval.workflowId,
+      workflowStepId: approval.workflowStepId
     });
     const durableAudit = await persistAudit(audit);
     const auditSuffix =

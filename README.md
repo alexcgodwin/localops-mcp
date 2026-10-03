@@ -10,7 +10,7 @@
 
 OpsChugex LocalOps MCP is a cross-platform Model Context Protocol server for safely inspecting local Windows and Linux systems. It is designed as the local/private-infrastructure counterpart to the Cloud DevOps MCP Server.
 
-Version 1.3.0 adds Network Topology Intelligence to the production LocalOps platform while retaining Database and Storage & Backup Intelligence. Bounded caller-supplied private-infrastructure graphs can now be analyzed for shortest dependency paths, source-to-target redundancy, failure domains and what-if connectivity impact through the private OpsChugex LocalOps Intelligence Core. LocalOps does not perform subnet scanning, remote login, SNMP writes, route changes, lateral execution or automatic network remediation.
+Version 1.4.0 adds Automated Remediation Workflows to the production LocalOps platform while retaining Network Topology, Database and Storage & Backup Intelligence. The private OpsChugex LocalOps Intelligence Core turns bounded current evidence plus the public execution-policy state into ordered remediation plans. The public MCP then enforces validation-before-mutation, fixed R2 actions only, process-bound RBAC, service allowlisting, durable audit, five-minute one-time approvals, exact `APPROVE` confirmation and post-action verification. R3+ remains manual and no workflow silently authorizes or executes a host change.
 
 ## Why this exists
 
@@ -55,6 +55,12 @@ LocalOps starts at the operating-system layer:
 - temporal change-trigger identification
 - local/evidence-based blast-radius analysis
 - advisory remediation recommendations with risk tiers
+- private evidence-based remediation workflow planning
+- ordered validation-before-mutation workflow gates
+- workflow-bound one-time approval tokens that cannot use the generic execution path
+- durable execution-audit correlation with workflow and step identifiers
+- post-action verification before a controlled remediation step is marked verified
+- R3+ remediation retained as manual-only workflow guidance
 - bounded local fleet snapshots without raw event-log storage
 - in-memory node registration and snapshot freshness tracking
 - fleet health and inventory summaries
@@ -87,7 +93,7 @@ LocalOps starts at the operating-system layer:
 
 The long-term goal is evidence correlation across endpoints, private infrastructure, networking, storage and virtualization while keeping advanced OpsChugex intelligence proprietary.
 
-## v1.3 tools
+## v1.4 tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -145,6 +151,12 @@ The long-term goal is evidence correlation across endpoints, private infrastruct
 | `propose_execution` | Run preflight and issue a five-minute one-time approval token without executing |
 | `execute_approved_action` | Execute exactly the action bound to a valid approval token |
 | `execution_audit_log` | Read recent in-memory execution audit records without approval tokens |
+| `remediation_workflow_status` | Show v1.4 workflow safety state, current execution gates and retained workflow summaries |
+| `create_remediation_workflow` | Build an ordered evidence-based remediation workflow without creating an approval or executing a change |
+| `remediation_workflow_details` | Read one workflow's steps, gates, status and token-free event history |
+| `record_remediation_step` | Record validation/manual completion or explicitly skip an eligible step without host mutation |
+| `prepare_remediation_step` | Create a workflow-bound five-minute R2 approval proposal after earlier validation is resolved |
+| `execute_approved_remediation_step` | Execute exactly one matching prepared R2 step through the existing controlled gateway and post-action verification |
 | `intelligence_status` | Check whether the private loopback intelligence core is configured and reachable |
 | `correlate_process_activity` | Correlate bounded process, event and network evidence through the private core |
 | `correlate_service_activity` | Correlate service, process, event and network relationships |
@@ -221,7 +233,7 @@ flowchart TD
     Client2 --> Core["Private OpsChugex LocalOps Intelligence Core"]
 ```
 
-The public MCP owns protocol handling, safe collectors, normalized node/fleet/infrastructure/database/backup schemas, bounded topology request contracts, fixed read-only database adapters, bounded local backup metadata collection, local virtualization/storage/power adapters, the in-memory fleet registry, process-bound RBAC/policy enforcement, local execution approvals, optional durable audit storage, the loopback client and operator-facing tools. The private OpsChugex intelligence core owns correlation, root-cause ranking, fleet drift, private device-health/topology reasoning, v1.3 dependency-path/redundancy/failure-domain/change-impact algorithms, database health/replication/contention/pressure analysis, and backup snapshot-health/recovery-readiness/risk correlation.
+The public MCP owns protocol handling, safe collectors, normalized node/fleet/infrastructure/database/backup schemas, bounded topology and remediation-workflow contracts, fixed read-only database adapters, bounded local backup metadata collection, local virtualization/storage/power adapters, the in-memory fleet registry, process-bound RBAC/policy enforcement, workflow state, one-time execution approvals, optional durable audit storage, the loopback client and operator-facing tools. The private OpsChugex intelligence core owns correlation, root-cause ranking, fleet drift, private device-health/topology reasoning, dependency-path/redundancy/failure-domain/change-impact algorithms, database health/replication/contention/pressure analysis, backup snapshot-health/recovery-readiness/risk correlation, and v1.4 remediation workflow planning/gate reasoning.
 
 ## Quickstart
 
@@ -251,7 +263,7 @@ npm run dev
 
 ### Optional private intelligence core
 
-The correlation, root-cause, private fleet, private-infrastructure, database, backup and v1.3 network-topology analysis tools require the private OpsChugex LocalOps Intelligence Core to be running locally. Configure the public MCP process with:
+The correlation, root-cause, private fleet, private-infrastructure, database, backup, network-topology and v1.4 remediation-planning tools require the private OpsChugex LocalOps Intelligence Core to be running locally. Configure the public MCP process with:
 
 ```text
 LOCALOPS_INTELLIGENCE_URL=http://127.0.0.1:43123
@@ -300,9 +312,23 @@ LOCALOPS_BACKUP_PROFILES=[{"id":"app-nightly","rootPath":"/srv/backups/app","kin
 
 On Windows, use an absolute Windows path with valid JSON escaping. `lastVerifiedRestoreAt` and `lastRestoreDurationMinutes` are operator-supplied evidence from an earlier restore test. LocalOps does not execute a restore to populate them. Backup profile parsing is included in `production_readiness`.
 
+### v1.4 remediation workflows
+
+A v1.4 remediation workflow is a bounded, in-memory orchestration record created from current LocalOps evidence and the current execution-policy state. Workflows expire after 30 minutes and at most 100 are retained.
+
+The workflow sequence is intentionally split:
+
+1. create a plan from bounded evidence
+2. complete required validation steps
+3. prepare one fixed R2 step, which creates a five-minute one-time approval token
+4. execute that exact workflow/step only with `confirmation="APPROVE"`
+5. require post-action verification before the step is marked verified
+
+Workflow execution requires `LOCALOPS_EXECUTION_ENABLED=true`, the existing role/allowlist checks, and `LOCALOPS_AUDIT_PERSISTENCE=true`. Raw approval tokens are never stored in workflow state or audit records. R3+ steps are guidance only and cannot be executed by LocalOps.
+
 ## Safety model
 
-v1.3 keeps the local approval-gated execution boundary and production RBAC/audit controls, while adding analysis-only Network Topology Intelligence on top of the existing database and storage/backup capabilities:
+v1.4 keeps the existing controlled-execution boundary and adds workflow orchestration without adding silent authorization. Remediation plans remain evidence-driven, R2-only for execution, explicitly approved and post-action verified:
 
 ```text
 R0 READ                     allowed
@@ -313,10 +339,11 @@ PRIVATE INTELLIGENCE          loopback-only, authenticated, analysis-only
 FLEET SNAPSHOTS               bounded, in-memory, no remote control
 PRIVATE INFRASTRUCTURE         local reads + caller-supplied snapshots only
 RBAC / POLICY                  process-bound, enforced for execution
-DURABLE AUDIT                  optional metadata-only local JSONL
+DURABLE AUDIT                  optional generally; required for v1.4 workflow execution
 DATABASE INTELLIGENCE          fixed read-only queries, named profiles only
 STORAGE / BACKUP INTELLIGENCE  bounded metadata, named local profiles only
 NETWORK TOPOLOGY INTELLIGENCE  bounded submitted graphs, analysis-only
+REMEDIATION WORKFLOWS           ordered planning + approval orchestration; no auto-authorization
 ```
 
 Important controls:
@@ -360,6 +387,16 @@ Important controls:
 - change triggers are temporal starting points, not proof of causation
 - blast radius is bounded to observed local entities and network relationships
 - remediation recommendations never authorize execution
+- v1.4 workflow creation does not create an approval token or execute a host change
+- required validation steps cannot be skipped before a later controlled R2 step is prepared
+- v1.4 workflow execution requires durable audit persistence in addition to the existing execution/RBAC/allowlist gates
+- raw workflow approval tokens are never stored; workflow state keeps only a SHA-256 token binding
+- workflow-bound approval tokens can be consumed only through the matching workflow and step, not through the generic execution tool
+- each controlled workflow step still requires a fresh five-minute one-time token and exact `APPROVE` confirmation
+- a controlled workflow step is marked verified only after post-action verification succeeds
+- workflow state is in-memory, capped at 100 retained workflows and expires after 30 minutes
+- R3+ remediation stays manual and is never mapped to an executable workflow action
+- no workflow silently authorizes, chains or executes multiple host mutations
 - fleet snapshots contain summarized security-change categories/counts, not raw event messages
 - fleet registry is in-memory only and capped at 500 nodes
 - registering a snapshot records caller-supplied node evidence; it does not authenticate or attest the identity of that node
@@ -411,9 +448,9 @@ Some platform collectors may require local permission to inspect specific proces
 
 This repository is the public implementation and portfolio-facing gateway.
 
-The separate private **OpsChugex LocalOps Intelligence Core** implements correlation, root-cause intelligence, fleet drift, private device-health/topology reasoning, v1.3 dependency-path/redundancy/failure-domain/change-impact analysis, database health/replication/contention/pressure analysis, and backup snapshot-health/recovery-readiness/risk correlation. Future private capabilities include predictive health, deeper cross-node/cross-service incident correlation and orchestration.
+The separate private **OpsChugex LocalOps Intelligence Core** implements correlation, root-cause intelligence, fleet drift, private device-health/topology reasoning, dependency-path/redundancy/failure-domain/change-impact analysis, database health/replication/contention/pressure analysis, backup snapshot-health/recovery-readiness/risk correlation, and v1.4 evidence-based remediation workflow planning. Future private capabilities include predictive health and deeper cross-node/cross-service incident correlation.
 
-The public repository contains safe collection, bounded snapshots, schemas, fixed read-only database adapters, bounded local backup metadata collectors, bounded topology contracts, local infrastructure adapters, the in-memory fleet registry and the loopback client. Proprietary correlation, ranking, drift, topology, database-analysis and backup-risk algorithms are not included in this MIT repository.
+The public repository contains safe collection, bounded snapshots, schemas, fixed read-only database adapters, bounded local backup metadata collectors, bounded topology/remediation contracts, local infrastructure adapters, in-memory workflow/fleet state, policy enforcement, approval orchestration, audit integration and the loopback client. Proprietary correlation, ranking, drift, topology, database-analysis, backup-risk and remediation-planning algorithms are not included in this MIT repository.
 
 ## Roadmap
 
@@ -432,6 +469,7 @@ The public repository contains safe collection, bounded snapshots, schemas, fixe
 | 1.1 | Database intelligence, completed |
 | 1.2 | Storage and backup intelligence, completed |
 | 1.3 | Network topology intelligence, completed |
+| 1.4 | Automated remediation workflows, completed |
 
 ## Development principles
 

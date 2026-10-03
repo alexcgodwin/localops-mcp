@@ -215,3 +215,64 @@ describe("v1.3 topology route allowlist", () => {
     expect(result.engineVersion).toBe("1.3.0");
   });
 });
+
+
+describe("v1.4 remediation private-route allowlist", () => {
+  it("permits workflow planning but rejects private remediation execution routes", async () => {
+    process.env.LOCALOPS_INTELLIGENCE_URL =
+      "http://127.0.0.1:43123";
+    process.env.LOCALOPS_INTELLIGENCE_TOKEN = "n".repeat(32);
+
+    let requested = "";
+    const fakeFetch = async (
+      input: string | URL | Request
+    ) => {
+      requested = String(input);
+      return new Response(
+        JSON.stringify({
+          engineVersion: "1.4.0",
+          generatedAt: new Date().toISOString(),
+          leadingHypothesis: null,
+          stepCount: 0,
+          controlledStepCount: 0,
+          readyForProposalCount: 0,
+          executionGateSatisfiedCount: 0,
+          manualStepCount: 0,
+          steps: [],
+          interpretation: "planning only",
+          limitations: []
+        }),
+        {
+          status: 200,
+          headers: {
+            "content-type": "application/json"
+          }
+        }
+      );
+    };
+
+    const result = await callPrivateIntelligence(
+      "/v1/remediation/workflow-plan",
+      {
+        bundle: {},
+        executionPolicy: {}
+      },
+      fakeFetch as typeof fetch
+    );
+
+    expect(requested).toBe(
+      "http://127.0.0.1:43123/v1/remediation/workflow-plan"
+    );
+    expect(result.engineVersion).toBe("1.4.0");
+
+    await expect(
+      callPrivateIntelligence(
+        "/v1/remediation/execute",
+        {},
+        fakeFetch as typeof fetch
+      )
+    ).rejects.toThrow(
+      "Unsupported private intelligence route"
+    );
+  });
+});
