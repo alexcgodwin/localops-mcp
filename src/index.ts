@@ -26,8 +26,9 @@ import { registerFleetTools } from "./fleet-tools.js";
 import { registerInfrastructureTools } from "./infrastructure-tools.js";
 import { registerPlatformTools } from "./platform-tools.js";
 import { registerDatabaseTools } from "./database-tools.js";
+import { registerStorageBackupTools } from "./storage-backup-tools.js";
 
-const VERSION = "1.1.0";
+const VERSION = "1.2.0";
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -83,7 +84,7 @@ export function createServer() {
     { name: "opschugex-localops-mcp", version: VERSION },
     {
       instructions:
-        "OpsChugex LocalOps v1.1 adds read-only Database Intelligence for PostgreSQL, MySQL/MariaDB, SQL Server and Redis on top of the production v1.0 platform. Database access is limited to configured named profiles and fixed telemetry queries; passwords, connection strings, arbitrary SQL and query text are not accepted through MCP. Private database health, replication, contention and pressure reasoning stays in the loopback-only intelligence core. Existing RBAC, approval-gated local execution and R3+ restrictions remain unchanged."
+        "OpsChugex LocalOps v1.2 adds read-only Storage & Backup Intelligence on top of v1.1 Database Intelligence. Backup access is limited to configured named local profiles and bounded metadata collection; arbitrary paths, restore execution, backup deletion and storage mutation are not exposed through MCP. Private snapshot-health, recovery-readiness and backup-risk correlation stay in the loopback-only intelligence core. Existing RBAC, approval-gated local execution and R3+ restrictions remain unchanged."
     }
   );
 
@@ -281,6 +282,7 @@ export function createServer() {
   registerInfrastructureTools(server);
   registerPlatformTools(server);
   registerDatabaseTools(server);
+  registerStorageBackupTools(server);
 
   return server;
 }

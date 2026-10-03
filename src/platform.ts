@@ -2,6 +2,7 @@ import { appendFile, chmod, mkdir, readFile } from "node:fs/promises";
 import os from "node:os";
 import { isAbsolute, join, parse, resolve } from "node:path";
 import { databaseProfiles } from "./database.js";
+import { backupProfiles } from "./storage-backup.js";
 
 export type LocalOpsRole =
   | "viewer"
@@ -333,6 +334,28 @@ export function productionReadinessInput() {
   } catch (error) {
     checks.push({
       id: "database-profiles",
+      status: "fail",
+      detail:
+        error instanceof Error
+          ? error.message
+          : String(error)
+    });
+  }
+
+  try {
+    const profiles = backupProfiles();
+    checks.push({
+      id: "backup-profiles",
+      status: profiles.length > 0 ? "pass" : "warn",
+      detail:
+        profiles.length > 0
+          ? profiles.length +
+            " backup profile(s) parsed successfully with named local roots and no MCP-supplied arbitrary paths."
+          : "No backup profiles are configured; v1.2 backup tools remain unavailable until LOCALOPS_BACKUP_PROFILES is configured."
+    });
+  } catch (error) {
+    checks.push({
+      id: "backup-profiles",
       status: "fail",
       detail:
         error instanceof Error
