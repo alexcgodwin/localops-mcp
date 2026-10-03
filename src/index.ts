@@ -30,7 +30,7 @@ import { registerStorageBackupTools } from "./storage-backup-tools.js";
 import { registerRemediationWorkflowTools } from "./remediation-tools.js";
 import { registerIncidentMemoryTools } from "./incident-memory-tools.js";
 
-const VERSION = "1.8.0";
+const VERSION = "1.9.0";
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -86,7 +86,7 @@ export function createServer() {
     { name: "opschugex-localops-mcp", version: VERSION },
     {
       instructions:
-        "OpsChugex LocalOps v1.8 adds Durable Incident Knowledge & Resolution Intelligence on top of v1.7 Incident Memory. Optional local persistence can retain up to 200 normalized incident cases across process restarts. Operators can record structured outcomes, and the private intelligence core can summarize historical resolution patterns and evidence-overlapping resolved cases. Incident knowledge stores normalized metadata only, not raw event logs, packet data, credentials, command output or approval tokens. Historical outcomes are context, not remediation recommendations or execution authorization. Existing approval-gated R2 execution and R3+ restrictions remain unchanged."
+        "OpsChugex LocalOps v1.9 adds Incident Knowledge Search & Case Clustering on top of durable incident knowledge. Operators can search retained cases using bounded structured evidence fields, find nearest historical cases by normalized fingerprint overlap, and group similar cases into threshold-connected clusters. Search and clustering use local normalized metadata only; no external embedding service, raw log search, packet inspection or arbitrary query language is introduced. Match and similarity percentages are descriptive evidence measures, not probability, causation or remediation authorization. Existing approval-gated R2 execution and R3+ restrictions remain unchanged."
     }
   );
 

@@ -10,7 +10,7 @@
 
 OpsChugex LocalOps MCP is a cross-platform Model Context Protocol server for safely inspecting local Windows and Linux systems. It is designed as the local/private-infrastructure counterpart to the Cloud DevOps MCP Server.
 
-Version 1.8.0 adds Durable Incident Knowledge & Resolution Intelligence while retaining v1.7 recurrence analysis, Cross-Node Incident Correlation, Predictive Health Intelligence and the existing approval-gated remediation, topology, database, and storage/backup capabilities. LocalOps can optionally persist up to 200 normalized incident cases under the LocalOps data directory, record structured operator-confirmed outcomes, summarize resolution patterns, and find evidence-overlapping historical resolved cases. Durable incident knowledge stores bounded metadata only, not raw event logs, packet data, credentials, command output or approval tokens. Historical outcomes are investigation context, not remediation recommendations or execution authorization.
+Version 1.9.0 adds Incident Knowledge Search & Case Clustering while retaining Durable Incident Knowledge, recurrence analysis, Cross-Node Incident Correlation, Predictive Health Intelligence and the existing approval-gated remediation, topology, database, and storage/backup capabilities. LocalOps can search up to 200 retained normalized incident cases using bounded structured evidence fields, find nearest historical cases by fingerprint overlap, and group similar cases into threshold-connected clusters. Search and clustering remain local/private-core analysis over normalized metadata only; no external embedding service, arbitrary query language, raw log search or packet inspection is introduced. Match and similarity percentages are descriptive evidence measures, not probability, causation or remediation authorization.
 
 ## Why this exists
 
@@ -78,6 +78,9 @@ LocalOps starts at the operating-system layer:
 - structured operator-confirmed incident outcomes without command or free-form remediation storage
 - historical resolution-pattern summaries from resolved/mitigated cases
 - evidence-overlap resolution history for selected cases without prescriptive recommendations
+- structured incident knowledge search across signals, tags, severity, scope and recorded outcomes
+- nearest historical case retrieval using normalized fingerprint overlap
+- threshold-connected incident case clustering with bounded cluster summaries
 - bounded local fleet snapshots without raw event-log storage
 - in-memory node registration and snapshot freshness tracking
 - fleet health and inventory summaries
@@ -110,7 +113,7 @@ LocalOps starts at the operating-system layer:
 
 The long-term goal is evidence correlation across endpoints, private infrastructure, networking, storage and virtualization while keeping advanced OpsChugex intelligence proprietary.
 
-## v1.8 tools
+## v1.9 tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -209,6 +212,9 @@ The long-term goal is evidence correlation across endpoints, private infrastruct
 | `record_incident_outcome` | Store a structured operator-confirmed outcome category/status for one case |
 | `incident_resolution_patterns` | Summarize historical outcome categories and repeated evidence patterns through the private core |
 | `incident_resolution_history` | Find evidence-overlapping prior resolved/mitigated cases and show their recorded outcomes |
+| `incident_knowledge_search` | Search retained cases with bounded structured evidence and outcome criteria |
+| `incident_case_neighbors` | Rank nearest retained cases by normalized fingerprint overlap |
+| `incident_case_clusters` | Group retained cases into bounded threshold-connected similarity clusters |
 | `fleet_health` | Summarize health, stale snapshots and node states across the registry |
 | `fleet_inventory` | Return bounded fleet metadata without raw event logs |
 | `compare_nodes` | Compare two registered snapshots through the private core |
@@ -297,7 +303,7 @@ npm run dev
 
 ### Optional private intelligence core
 
-The correlation, root-cause, private fleet, private-infrastructure, database, backup, network-topology, remediation-planning, predictive-health, cross-node incident, recurrence and v1.8 resolution-analysis tools require the private OpsChugex LocalOps Intelligence Core to be running locally. Configure the public MCP process with:
+The correlation, root-cause, private fleet, private-infrastructure, database, backup, network-topology, remediation-planning, predictive-health, cross-node incident, recurrence, resolution and v1.9 knowledge-search/clustering tools require the private OpsChugex LocalOps Intelligence Core to be running locally. Configure the public MCP process with:
 
 ```text
 LOCALOPS_INTELLIGENCE_URL=http://127.0.0.1:43123
@@ -390,9 +396,17 @@ Set `LOCALOPS_INCIDENT_PERSISTENCE=true` to persist the bounded 200-case normali
 
 `incident_resolution_patterns` summarizes operator-confirmed resolved/mitigated cases by resolution category and repeated normalized evidence. `incident_resolution_history` finds prior resolved/mitigated cases with fingerprint overlap. Both are historical context only: they do not prescribe an action, prove causation or authorize execution.
 
+### v1.9 incident knowledge search and case clustering
+
+`incident_knowledge_search` accepts only bounded structured criteria: signal IDs, tags, cause categories, severity, scope, outcome status and resolution category. It ranks retained cases by how much of the supplied query criteria each case covers. The match percentage is query coverage, not semantic confidence, probability or proof of causation.
+
+`incident_case_neighbors` ranks the nearest historical cases to one selected case using Jaccard overlap of normalized fingerprint tokens. `incident_case_clusters` groups cases connected by a caller-selected 1-100 similarity threshold and returns bounded cluster summaries, common evidence and recorded outcome categories. Cluster membership is descriptive; threshold-connected groups can contain indirectly linked cases.
+
+All v1.9 retrieval stays inside the authenticated loopback private core. No external vector database, embedding API, arbitrary text query, raw log search, packet inspection or new execution path is introduced.
+
 ## Safety model
 
-v1.8 keeps the existing controlled-execution, remediation, predictive, cross-node and recurrence boundaries while adding optional durable normalized case storage plus historical resolution intelligence. Stored outcomes are metadata only, and historical patterns cannot authorize execution:
+v1.9 keeps the existing controlled-execution, remediation, predictive, cross-node, recurrence and durable-knowledge boundaries while adding structured incident retrieval and similarity clustering. Search and cluster results are analysis only and cannot authorize execution:
 
 ```text
 R0 READ                     allowed
@@ -483,6 +497,12 @@ Important controls:
 - incident similarity measures normalized evidence overlap and is not recurrence probability or causal proof
 - historical resolution patterns describe recorded outcomes and are not recommendations for a future incident
 - v1.8 private incident routes are authenticated, loopback-only, analysis-only and expose no execution endpoint
+- v1.9 search accepts only bounded structured criteria and does not expose arbitrary text, regex, SQL, shell or raw-log query input
+- v1.9 neighbor and cluster similarity uses normalized fingerprint overlap and is not probability or causal confidence
+- clustering is bounded to at most 200 supplied cases and returns at most 50 cluster summaries
+- threshold-connected clusters can include indirectly linked cases and explicitly disclose that limitation
+- no external embedding, vector database or third-party search service receives incident knowledge
+- v1.9 private retrieval routes are authenticated, loopback-only, analysis-only and expose no execution endpoint
 - fleet snapshots contain summarized security-change categories/counts, not raw event messages
 - fleet registry is in-memory only and capped at 500 nodes
 - registering a snapshot records caller-supplied node evidence; it does not authenticate or attest the identity of that node
@@ -534,9 +554,9 @@ Some platform collectors may require local permission to inspect specific proces
 
 This repository is the public implementation and portfolio-facing gateway.
 
-The separate private **OpsChugex LocalOps Intelligence Core** implements correlation, root-cause intelligence, fleet drift, predictive-health trend/threshold analysis, cross-node incident correlation, incident fingerprinting, recurrence/similarity analysis, v1.8 resolution-pattern and historical-resolution analysis, shared-cause ranking and scope analysis, private device-health/topology reasoning, dependency-path/redundancy/failure-domain/change-impact analysis, database health/replication/contention/pressure analysis, backup snapshot-health/recovery-readiness/risk correlation, and remediation workflow planning.
+The separate private **OpsChugex LocalOps Intelligence Core** implements correlation, root-cause intelligence, fleet drift, predictive-health trend/threshold analysis, cross-node incident correlation, incident fingerprinting, recurrence/similarity analysis, resolution-pattern and historical-resolution analysis, v1.9 structured incident retrieval, nearest-case matching and similarity clustering, shared-cause ranking and scope analysis, private device-health/topology reasoning, dependency-path/redundancy/failure-domain/change-impact analysis, database health/replication/contention/pressure analysis, backup snapshot-health/recovery-readiness/risk correlation, and remediation workflow planning.
 
-The public repository contains safe collection, bounded snapshots, schemas, fixed read-only database adapters, bounded local backup metadata collectors, bounded topology/remediation/predictive/cross-node/incident-memory contracts, local infrastructure adapters, in-memory workflow/fleet/health-history state, optional durable normalized incident-case storage, structured outcome recording, policy enforcement, approval orchestration, audit integration and the loopback client. Proprietary correlation, incident fingerprinting, recurrence/similarity analysis, resolution-pattern analysis, shared-cause ranking, scope analysis, drift, topology, database-analysis, backup-risk, remediation-planning and predictive-health algorithms are not included in this MIT repository.
+The public repository contains safe collection, bounded snapshots, schemas, fixed read-only database adapters, bounded local backup metadata collectors, bounded topology/remediation/predictive/cross-node/incident-memory/search contracts, local infrastructure adapters, in-memory workflow/fleet/health-history state, optional durable normalized incident-case storage, structured outcome recording, policy enforcement, approval orchestration, audit integration and the loopback client. Proprietary correlation, incident fingerprinting, recurrence/similarity analysis, resolution-pattern analysis, structured retrieval ranking, neighbor matching, case clustering, shared-cause ranking, scope analysis, drift, topology, database-analysis, backup-risk, remediation-planning and predictive-health algorithms are not included in this MIT repository.
 
 ## Roadmap
 
@@ -560,6 +580,7 @@ The public repository contains safe collection, bounded snapshots, schemas, fixe
 | 1.6 | Cross-node incident correlation, completed |
 | 1.7 | Incident memory and recurrence intelligence, completed |
 | 1.8 | Durable incident knowledge and resolution intelligence, completed |
+| 1.9 | Incident knowledge search and case clustering, completed |
 
 ## Development principles
 

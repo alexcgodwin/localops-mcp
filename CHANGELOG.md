@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.9.0
+
+- Added Incident Knowledge Search & Case Clustering on top of durable v1.8 incident knowledge.
+- Added `incident_knowledge_search`, `incident_case_neighbors` and `incident_case_clusters`.
+- Structured search supports bounded signal IDs, tags, cause categories, severity, scope, outcome status and resolution category criteria.
+- Search ranking measures supplied-query coverage and returns at most 50 results; it is not probability or causal confidence.
+- Nearest-case matching uses normalized fingerprint-token Jaccard overlap and returns at most 20 cases.
+- Case clustering uses a caller-selected 1-100 similarity threshold across at most 200 supplied cases and returns at most 50 cluster summaries.
+- Cluster summaries include case IDs, average similarity, common signals/tags/cause categories and recorded outcome categories.
+- Search/clustering stays inside the authenticated loopback private core and uses no external embeddings, vector database or arbitrary raw-log query.
+- No incident-search, clustering or similarity result authorizes execution or remediation.
+
 ## 1.8.0
 
 - Added Durable Incident Knowledge & Resolution Intelligence on top of v1.7 incident memory and recurrence analysis.
