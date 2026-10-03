@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.3.0
+
+- Added Network Topology Intelligence on top of the existing private-infrastructure graph model.
+- Added `network_dependency_path`, `network_path_redundancy`, `network_failure_domains` and `network_change_impact`.
+- Dependency-path analysis returns the shortest submitted non-down path, hop count, unknown-link count and bounded bottleneck-speed evidence.
+- Path-redundancy analysis checks one primary-path link or intermediate-node loss at a time without probing or changing the network.
+- Failure-domain analysis measures additional pairwise connectivity loss for submitted nodes and non-parallel active links.
+- Change-impact analysis performs bounded what-if simulations for explicitly selected unavailable nodes or endpoint-pair links.
+- Added authenticated private topology routes under `/v1/topology/*`.
+- Existing `network_device_health` and `private_network_topology` now report the v1.3 private topology engine version while keeping their existing contracts.
+- No subnet scanning, remote login, SSH/WinRM control, SNMP writes, route/firewall mutation, remote credentials, lateral execution or automatic remediation is exposed.
+
 ## 1.2.0
 
 - Added Storage & Backup Intelligence through named profiles configured with `LOCALOPS_BACKUP_PROFILES`; MCP tools accept profile IDs rather than arbitrary filesystem paths.
