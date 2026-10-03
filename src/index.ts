@@ -30,8 +30,9 @@ import { registerStorageBackupTools } from "./storage-backup-tools.js";
 import { registerRemediationWorkflowTools } from "./remediation-tools.js";
 import { registerIncidentMemoryTools } from "./incident-memory-tools.js";
 import { registerKnowledgeGraphTools } from "./knowledge-graph-tools.js";
+import { registerInvestigationTools } from "./investigation-tools.js";
 
-const VERSION = "2.0.0";
+const VERSION = "2.1.0";
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -87,7 +88,7 @@ export function createServer() {
     { name: "opschugex-localops-mcp", version: VERSION },
     {
       instructions:
-        "OpsChugex LocalOps v2.0 adds an Operational Knowledge Graph & Guided Investigation layer on top of durable incident knowledge. LocalOps can build bounded graphs linking cases to signals, tags, cause categories, outcomes and resolutions, trace evidence paths between incidents, look up cases by normalized graph entities, and generate ordered non-mutating investigation plans from current and historical evidence. Graph links and similarity remain descriptive evidence, not causal proof or execution authorization. No new automatic remediation path is introduced; existing approval-gated R2 execution and R3+ restrictions remain unchanged."
+        "OpsChugex LocalOps v2.1 adds Investigation Session Memory & Evidence Checkpoints on top of the v2 operational knowledge graph. Operators can create bounded case-linked investigation sessions, record normalized evidence-review checkpoints, track open/resolved/deferred questions, optionally persist session metadata locally, and analyze documentation coverage with historical case context through the private core. Review coverage is documentation progress only, not confidence, root-cause probability or remediation readiness. Session writes modify LocalOps metadata only; no new host-execution path is introduced."
     }
   );
 
@@ -289,6 +290,7 @@ export function createServer() {
   registerRemediationWorkflowTools(server);
   registerIncidentMemoryTools(server);
   registerKnowledgeGraphTools(server);
+  registerInvestigationTools(server);
 
   return server;
 }
