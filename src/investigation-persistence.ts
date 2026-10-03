@@ -2,7 +2,8 @@ import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { localOpsDataDirectory } from "./platform.js";
 
-const FILE_VERSION = "2.1.0";
+const FILE_VERSION = "2.2.0";
+const LEGACY_FILE_VERSION = "2.1.0";
 const MAX_SESSIONS = 50;
 
 export function investigationPersistenceEnabled(): boolean {
@@ -24,7 +25,10 @@ export async function readPersistedInvestigationSessions(): Promise<unknown[]> {
       version?: unknown;
       sessions?: unknown;
     };
-    if (parsed.version !== FILE_VERSION || !Array.isArray(parsed.sessions)) {
+    if (
+      ![FILE_VERSION, LEGACY_FILE_VERSION].includes(String(parsed.version)) ||
+      !Array.isArray(parsed.sessions)
+    ) {
       throw new Error("Investigation session file has an unsupported format.");
     }
     return parsed.sessions.slice(-MAX_SESSIONS);
@@ -33,6 +37,7 @@ export async function readPersistedInvestigationSessions(): Promise<unknown[]> {
     throw error;
   }
 }
+
 export async function writePersistedInvestigationSessions(
   sessions: unknown[]
 ): Promise<void> {

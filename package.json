@@ -1,7 +1,7 @@
 {
   "name": "opschugex-localops-mcp",
-  "version": "2.1.0",
-  "description": "OpsChugex LocalOps MCP for local infrastructure, endpoint, database, backup, topology, predictive health, operational knowledge graphs, investigation session memory and approval-gated remediation intelligence on Windows and Linux.",
+  "version": "2.2.0",
+  "description": "OpsChugex LocalOps MCP for local infrastructure, endpoint, database, backup, topology, predictive health, operational knowledge graphs, investigation hypothesis ledgers and approval-gated remediation intelligence on Windows and Linux.",
   "type": "module",
   "mcpName": "io.github.alexcgodwin/localops-mcp",
   "bin": {
@@ -52,7 +52,9 @@
     "operational-intelligence",
     "investigation-session",
     "evidence-checkpoints",
-    "incident-workflow-memory"
+    "incident-workflow-memory",
+    "hypothesis-ledger",
+    "evidence-provenance"
   ],
   "author": "Alex C. Godwin",
   "license": "MIT",

@@ -12,6 +12,8 @@ const MAX_SESSIONS = 50;
 const MAX_CHECKPOINTS = 100;
 const MAX_QUESTIONS = 50;
 const MAX_EVIDENCE_REFS = 20;
+const MAX_HYPOTHESES = 25;
+const MAX_HYPOTHESIS_EVIDENCE = 50;
 
 export type InvestigationSessionStatus =
   | "open"
@@ -38,6 +40,25 @@ export type InvestigationQuestionStatus =
   | "resolved"
   | "deferred";
 
+export type InvestigationHypothesisStatus =
+  | "proposed"
+  | "active"
+  | "supported"
+  | "weakened"
+  | "rejected"
+  | "retired";
+
+export type HypothesisEvidenceStance =
+  | "supporting"
+  | "contradicting"
+  | "context";
+
+export type HypothesisEvidenceProvenance =
+  | "current-case"
+  | "historical-case"
+  | "checkpoint-derived"
+  | "unverified-reference";
+
 export type InvestigationCheckpoint = {
   checkpointId: string;
   recordedAt: string;
@@ -56,6 +77,27 @@ export type InvestigationQuestion = {
   operatorId: string;
 };
 
+export type InvestigationHypothesisEvidence = {
+  evidenceId: string;
+  linkedAt: string;
+  operatorId: string;
+  stance: HypothesisEvidenceStance;
+  provenance: HypothesisEvidenceProvenance;
+  reference: string;
+  sourceCaseId: string | null;
+  sourceCheckpointId: string | null;
+};
+
+export type InvestigationHypothesis = {
+  hypothesisId: string;
+  statement: string;
+  status: InvestigationHypothesisStatus;
+  createdAt: string;
+  updatedAt: string;
+  operatorId: string;
+  evidenceLinks: InvestigationHypothesisEvidence[];
+};
+
 export type InvestigationSessionRecord = {
   sessionId: string;
   caseId: string;
@@ -66,10 +108,12 @@ export type InvestigationSessionRecord = {
   operatorId: string;
   checkpoints: InvestigationCheckpoint[];
   questions: InvestigationQuestion[];
+  hypotheses: InvestigationHypothesis[];
 };
 
 const sessions: InvestigationSessionRecord[] = [];
 let loaded = false;
+
 function safeSessionId(value: string): string {
   const sessionId = value.trim();
   if (!/^inv_[A-Za-z0-9_-]{1,80}$/.test(sessionId)) {
@@ -84,6 +128,14 @@ function safeQuestionId(value: string): string {
     throw new Error("Invalid investigation question ID.");
   }
   return questionId;
+}
+
+function safeHypothesisId(value: string): string {
+  const hypothesisId = value.trim();
+  if (!/^hyp_[A-Za-z0-9_-]{1,80}$/.test(hypothesisId)) {
+    throw new Error("Invalid investigation hypothesis ID.");
+  }
+  return hypothesisId;
 }
 
 function safeTitle(value: string | undefined): string | null {
@@ -104,6 +156,29 @@ function safePrompt(value: string): string {
   return prompt;
 }
 
+function safeHypothesisStatement(value: string): string {
+  const statement = value.replace(/\s+/g, " ").trim();
+  if (!statement) {
+    throw new Error("Investigation hypothesis statement is required.");
+  }
+  if (statement.length > 240) {
+    throw new Error("Investigation hypothesis statement exceeds 240 characters.");
+  }
+  return statement;
+}
+
+function safeEvidenceReference(value: string): string {
+  const reference = value.replace(/\s+/g, " ").trim();
+  if (
+    !reference ||
+    reference.length > 128 ||
+    !/^[A-Za-z0-9][A-Za-z0-9_.:/@ -]{0,127}$/.test(reference)
+  ) {
+    throw new Error("Hypothesis evidence reference contains unsupported characters.");
+  }
+  return reference;
+}
+
 function safeEvidenceRefs(values: string[]): string[] {
   if (!Array.isArray(values) || values.length > MAX_EVIDENCE_REFS) {
     throw new Error("An investigation checkpoint supports at most 20 evidence references.");
@@ -121,10 +196,27 @@ function safeEvidenceRefs(values: string[]): string[] {
   return [...new Set(normalized)];
 }
 
+function safeCaseId(value: string): string {
+  const caseId = value.trim();
+  if (!/^inc_[A-Za-z0-9_-]{1,80}$/.test(caseId)) {
+    throw new Error("Invalid incident case ID.");
+  }
+  return caseId;
+}
+
+function safeCheckpointId(value: string): string {
+  const checkpointId = value.trim();
+  if (!/^chk_[A-Za-z0-9_-]{1,80}$/.test(checkpointId)) {
+    throw new Error("Invalid investigation checkpoint ID.");
+  }
+  return checkpointId;
+}
+
 function safeLimit(value: number | undefined, fallback = 25): number {
   const limit = Number.isInteger(value) ? Number(value) : fallback;
   return Math.max(1, Math.min(limit, MAX_SESSIONS));
 }
+
 function validateCheckpoint(value: unknown): InvestigationCheckpoint {
   if (!value || typeof value !== "object") {
     throw new Error("Invalid investigation checkpoint.");
@@ -189,11 +281,124 @@ function validateQuestion(value: unknown): InvestigationQuestion {
     operatorId: item.operatorId
   };
 }
+
+function validateHypothesisEvidence(
+  value: unknown
+): InvestigationHypothesisEvidence {
+  if (!value || typeof value !== "object") {
+    throw new Error("Invalid hypothesis evidence metadata.");
+  }
+  const item = value as Partial<InvestigationHypothesisEvidence>;
+  if (
+    typeof item.evidenceId !== "string" ||
+    !/^hev_[A-Za-z0-9_-]{1,80}$/.test(item.evidenceId) ||
+    typeof item.linkedAt !== "string" ||
+    !Number.isFinite(new Date(item.linkedAt).getTime()) ||
+    typeof item.operatorId !== "string" ||
+    !/^[A-Za-z0-9][A-Za-z0-9_.:@ -]{0,127}$/.test(item.operatorId) ||
+    !["supporting", "contradicting", "context"].includes(String(item.stance)) ||
+    ![
+      "current-case",
+      "historical-case",
+      "checkpoint-derived",
+      "unverified-reference"
+    ].includes(String(item.provenance)) ||
+    typeof item.reference !== "string"
+  ) {
+    throw new Error("Invalid hypothesis evidence metadata.");
+  }
+
+  const sourceCaseId =
+    item.sourceCaseId === null || item.sourceCaseId === undefined
+      ? null
+      : safeCaseId(String(item.sourceCaseId));
+  const sourceCheckpointId =
+    item.sourceCheckpointId === null || item.sourceCheckpointId === undefined
+      ? null
+      : safeCheckpointId(String(item.sourceCheckpointId));
+
+  if (
+    item.provenance === "current-case" &&
+    (!sourceCaseId || sourceCheckpointId)
+  ) {
+    throw new Error("Current-case evidence requires one source case only.");
+  }
+  if (
+    item.provenance === "historical-case" &&
+    (!sourceCaseId || sourceCheckpointId)
+  ) {
+    throw new Error("Historical-case evidence requires one source case only.");
+  }
+  if (
+    item.provenance === "checkpoint-derived" &&
+    (!sourceCheckpointId || sourceCaseId)
+  ) {
+    throw new Error("Checkpoint-derived evidence requires one checkpoint only.");
+  }
+  if (
+    item.provenance === "unverified-reference" &&
+    (sourceCaseId || sourceCheckpointId)
+  ) {
+    throw new Error("Unverified references cannot claim a case or checkpoint source.");
+  }
+
+  return {
+    evidenceId: item.evidenceId,
+    linkedAt: item.linkedAt,
+    operatorId: item.operatorId,
+    stance: item.stance as HypothesisEvidenceStance,
+    provenance: item.provenance as HypothesisEvidenceProvenance,
+    reference: safeEvidenceReference(item.reference),
+    sourceCaseId,
+    sourceCheckpointId
+  };
+}
+
+function validateHypothesis(value: unknown): InvestigationHypothesis {
+  if (!value || typeof value !== "object") {
+    throw new Error("Invalid investigation hypothesis.");
+  }
+  const item = value as Partial<InvestigationHypothesis>;
+  if (
+    typeof item.hypothesisId !== "string" ||
+    !/^hyp_[A-Za-z0-9_-]{1,80}$/.test(item.hypothesisId) ||
+    typeof item.statement !== "string" ||
+    ![
+      "proposed",
+      "active",
+      "supported",
+      "weakened",
+      "rejected",
+      "retired"
+    ].includes(String(item.status)) ||
+    typeof item.createdAt !== "string" ||
+    !Number.isFinite(new Date(item.createdAt).getTime()) ||
+    typeof item.updatedAt !== "string" ||
+    !Number.isFinite(new Date(item.updatedAt).getTime()) ||
+    typeof item.operatorId !== "string" ||
+    !/^[A-Za-z0-9][A-Za-z0-9_.:@ -]{0,127}$/.test(item.operatorId) ||
+    !Array.isArray(item.evidenceLinks) ||
+    item.evidenceLinks.length > MAX_HYPOTHESIS_EVIDENCE
+  ) {
+    throw new Error("Invalid investigation hypothesis metadata.");
+  }
+  return {
+    hypothesisId: item.hypothesisId,
+    statement: safeHypothesisStatement(item.statement),
+    status: item.status as InvestigationHypothesisStatus,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    operatorId: item.operatorId,
+    evidenceLinks: item.evidenceLinks.map(validateHypothesisEvidence)
+  };
+}
+
 function validateStoredSession(value: unknown): InvestigationSessionRecord {
   if (!value || typeof value !== "object") {
     throw new Error("Invalid stored investigation session.");
   }
   const item = value as Partial<InvestigationSessionRecord>;
+  const hypotheses = item.hypotheses ?? [];
   if (
     typeof item.sessionId !== "string" ||
     !/^inv_[A-Za-z0-9_-]{1,80}$/.test(item.sessionId) ||
@@ -209,7 +414,9 @@ function validateStoredSession(value: unknown): InvestigationSessionRecord {
     !Array.isArray(item.checkpoints) ||
     item.checkpoints.length > MAX_CHECKPOINTS ||
     !Array.isArray(item.questions) ||
-    item.questions.length > MAX_QUESTIONS
+    item.questions.length > MAX_QUESTIONS ||
+    !Array.isArray(hypotheses) ||
+    hypotheses.length > MAX_HYPOTHESES
   ) {
     throw new Error("Invalid stored investigation session metadata.");
   }
@@ -226,7 +433,8 @@ function validateStoredSession(value: unknown): InvestigationSessionRecord {
     updatedAt: item.updatedAt,
     operatorId: item.operatorId,
     checkpoints: item.checkpoints.map(validateCheckpoint),
-    questions: item.questions.map(validateQuestion)
+    questions: item.questions.map(validateQuestion),
+    hypotheses: hypotheses.map(validateHypothesis)
   };
 }
 
@@ -244,6 +452,7 @@ async function ensureLoaded(): Promise<void> {
 async function persist(): Promise<void> {
   await writePersistedInvestigationSessions(sessions);
 }
+
 export async function createInvestigationSession(
   caseId: string,
   title?: string
@@ -260,7 +469,8 @@ export async function createInvestigationSession(
     updatedAt: now,
     operatorId: currentOperatorId(),
     checkpoints: [],
-    questions: []
+    questions: [],
+    hypotheses: []
   };
   sessions.push(session);
   if (sessions.length > MAX_SESSIONS) {
@@ -286,6 +496,11 @@ export async function listInvestigationSessions(limit = 25) {
       openQuestionCount: session.questions.filter(
         (question) => question.status === "open"
       ).length,
+      hypothesisCount: session.hypotheses.length,
+      activeHypothesisCount: session.hypotheses.filter(
+        (hypothesis) =>
+          hypothesis.status !== "rejected" && hypothesis.status !== "retired"
+      ).length,
       operatorId: session.operatorId
     })),
     persistence: investigationPersistenceEnabled()
@@ -303,6 +518,7 @@ export async function investigationSessionDetails(
   if (!session) throw new Error("Investigation session is not stored.");
   return session;
 }
+
 export async function recordInvestigationCheckpoint(
   sessionId: string,
   input: {
@@ -377,6 +593,191 @@ export async function updateInvestigationQuestion(
   await persist();
   return session;
 }
+
+export async function addInvestigationHypothesis(
+  sessionId: string,
+  input: { statement: string }
+): Promise<InvestigationSessionRecord> {
+  const session = await investigationSessionDetails(sessionId);
+  if (session.status === "completed") {
+    throw new Error("Completed investigation sessions cannot accept hypotheses.");
+  }
+  if (session.hypotheses.length >= MAX_HYPOTHESES) {
+    throw new Error("Investigation session hypothesis limit reached.");
+  }
+  const now = new Date().toISOString();
+  session.hypotheses.push({
+    hypothesisId: "hyp_" + randomUUID(),
+    statement: safeHypothesisStatement(input.statement),
+    status: "proposed",
+    createdAt: now,
+    updatedAt: now,
+    operatorId: currentOperatorId(),
+    evidenceLinks: []
+  });
+  session.updatedAt = now;
+  await persist();
+  return session;
+}
+
+export async function listInvestigationHypotheses(sessionId: string) {
+  const session = await investigationSessionDetails(sessionId);
+  return {
+    sessionId: session.sessionId,
+    caseId: session.caseId,
+    hypothesisCount: session.hypotheses.length,
+    hypotheses: session.hypotheses.map((hypothesis) => ({
+      hypothesisId: hypothesis.hypothesisId,
+      statement: hypothesis.statement,
+      status: hypothesis.status,
+      createdAt: hypothesis.createdAt,
+      updatedAt: hypothesis.updatedAt,
+      operatorId: hypothesis.operatorId,
+      evidenceLinkCount: hypothesis.evidenceLinks.length,
+      supportingEvidenceCount: hypothesis.evidenceLinks.filter(
+        (item) => item.stance === "supporting"
+      ).length,
+      contradictingEvidenceCount: hypothesis.evidenceLinks.filter(
+        (item) => item.stance === "contradicting"
+      ).length,
+      contextEvidenceCount: hypothesis.evidenceLinks.filter(
+        (item) => item.stance === "context"
+      ).length
+    }))
+  };
+}
+
+export async function investigationHypothesisDetails(
+  sessionId: string,
+  hypothesisId: string
+): Promise<InvestigationHypothesis> {
+  const session = await investigationSessionDetails(sessionId);
+  const safe = safeHypothesisId(hypothesisId);
+  const hypothesis = session.hypotheses.find(
+    (item) => item.hypothesisId === safe
+  );
+  if (!hypothesis) throw new Error("Investigation hypothesis is not stored.");
+  return hypothesis;
+}
+
+export async function updateInvestigationHypothesis(
+  sessionId: string,
+  hypothesisId: string,
+  status: InvestigationHypothesisStatus
+): Promise<InvestigationSessionRecord> {
+  const session = await investigationSessionDetails(sessionId);
+  if (session.status === "completed") {
+    throw new Error("Completed investigation sessions cannot change hypotheses.");
+  }
+  const hypothesis = await investigationHypothesisDetails(
+    session.sessionId,
+    hypothesisId
+  );
+  const now = new Date().toISOString();
+  hypothesis.status = status;
+  hypothesis.updatedAt = now;
+  session.updatedAt = now;
+  await persist();
+  return session;
+}
+
+export async function linkHypothesisEvidence(
+  sessionId: string,
+  hypothesisId: string,
+  input: {
+    stance: HypothesisEvidenceStance;
+    provenance: HypothesisEvidenceProvenance;
+    reference: string;
+    sourceCaseId?: string;
+    sourceCheckpointId?: string;
+  }
+): Promise<InvestigationSessionRecord> {
+  const session = await investigationSessionDetails(sessionId);
+  if (session.status === "completed") {
+    throw new Error("Completed investigation sessions cannot accept hypothesis evidence.");
+  }
+  const hypothesis = await investigationHypothesisDetails(
+    session.sessionId,
+    hypothesisId
+  );
+  if (hypothesis.evidenceLinks.length >= MAX_HYPOTHESIS_EVIDENCE) {
+    throw new Error("Investigation hypothesis evidence-link limit reached.");
+  }
+
+  let sourceCaseId: string | null = null;
+  let sourceCheckpointId: string | null = null;
+
+  if (input.provenance === "current-case") {
+    sourceCaseId = session.caseId;
+    if (input.sourceCaseId && safeCaseId(input.sourceCaseId) !== session.caseId) {
+      throw new Error("Current-case evidence must reference the investigation target case.");
+    }
+    if (input.sourceCheckpointId) {
+      throw new Error("Current-case evidence cannot claim a checkpoint source.");
+    }
+  } else if (input.provenance === "historical-case") {
+    if (!input.sourceCaseId) {
+      throw new Error("Historical-case evidence requires sourceCaseId.");
+    }
+    sourceCaseId = safeCaseId(input.sourceCaseId);
+    if (sourceCaseId === session.caseId) {
+      throw new Error("Historical-case evidence must reference a different incident case.");
+    }
+    await incidentCaseDetails(sourceCaseId);
+    if (input.sourceCheckpointId) {
+      throw new Error("Historical-case evidence cannot claim a checkpoint source.");
+    }
+  } else if (input.provenance === "checkpoint-derived") {
+    if (!input.sourceCheckpointId) {
+      throw new Error("Checkpoint-derived evidence requires sourceCheckpointId.");
+    }
+    sourceCheckpointId = safeCheckpointId(input.sourceCheckpointId);
+    if (
+      !session.checkpoints.some(
+        (checkpoint) => checkpoint.checkpointId === sourceCheckpointId
+      )
+    ) {
+      throw new Error("Source investigation checkpoint is not stored in this session.");
+    }
+    if (input.sourceCaseId) {
+      throw new Error("Checkpoint-derived evidence cannot claim a case source.");
+    }
+  } else {
+    if (input.sourceCaseId || input.sourceCheckpointId) {
+      throw new Error("Unverified references cannot claim a case or checkpoint source.");
+    }
+  }
+
+  const reference = safeEvidenceReference(input.reference);
+  const duplicate = hypothesis.evidenceLinks.some(
+    (item) =>
+      item.stance === input.stance &&
+      item.provenance === input.provenance &&
+      item.reference === reference &&
+      item.sourceCaseId === sourceCaseId &&
+      item.sourceCheckpointId === sourceCheckpointId
+  );
+  if (duplicate) {
+    throw new Error("This hypothesis evidence link is already stored.");
+  }
+
+  const now = new Date().toISOString();
+  hypothesis.evidenceLinks.push({
+    evidenceId: "hev_" + randomUUID(),
+    linkedAt: now,
+    operatorId: currentOperatorId(),
+    stance: input.stance,
+    provenance: input.provenance,
+    reference,
+    sourceCaseId,
+    sourceCheckpointId
+  });
+  hypothesis.updatedAt = now;
+  session.updatedAt = now;
+  await persist();
+  return session;
+}
+
 export async function setInvestigationSessionStatus(
   sessionId: string,
   status: InvestigationSessionStatus
@@ -399,7 +800,7 @@ export async function setInvestigationSessionStatus(
 export async function investigationSessionStatus() {
   await ensureLoaded();
   return {
-    version: "2.1.0" as const,
+    version: "2.2.0" as const,
     persistenceEnabled: investigationPersistenceEnabled(),
     persistencePath: investigationPersistenceEnabled()
       ? investigationSessionsPath()
@@ -413,8 +814,10 @@ export async function investigationSessionStatus() {
     maxSessions: MAX_SESSIONS,
     maxCheckpointsPerSession: MAX_CHECKPOINTS,
     maxQuestionsPerSession: MAX_QUESTIONS,
+    maxHypothesesPerSession: MAX_HYPOTHESES,
+    maxEvidenceLinksPerHypothesis: MAX_HYPOTHESIS_EVIDENCE,
     storage:
-      "Bounded investigation metadata only; no raw event logs, packet data, credentials, command output, approval tokens or remediation scripts."
+      "Bounded investigation metadata, hypothesis statements and normalized evidence references only; no raw event logs, packet data, credentials, command output, approval tokens or remediation scripts."
   };
 }
 

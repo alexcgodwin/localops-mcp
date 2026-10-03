@@ -276,3 +276,54 @@ describe("v1.4 remediation private-route allowlist", () => {
     );
   });
 });
+
+
+describe("v2.2 investigation hypothesis route allowlist", () => {
+  it("permits hypothesis balance analysis and rejects investigation execution", async () => {
+    process.env.LOCALOPS_INTELLIGENCE_URL = "http://127.0.0.1:43123";
+    process.env.LOCALOPS_INTELLIGENCE_TOKEN = "v".repeat(32);
+
+    let requested = "";
+    const fakeFetch = async (input: string | URL | Request) => {
+      requested = String(input);
+      return new Response(
+        JSON.stringify({
+          engineVersion: "2.2.0",
+          generatedAt: new Date().toISOString(),
+          sessionId: "inv_test",
+          caseId: "inc_test",
+          hypothesisCount: 0,
+          conflictedHypothesisCount: 0,
+          withoutEvidenceCount: 0,
+          unverifiedEvidenceLinkCount: 0,
+          hypotheses: [],
+          interpretation: "evidence balance only",
+          limitations: []
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        }
+      );
+    };
+
+    const result = await callPrivateIntelligence(
+      "/v2/investigations/hypothesis-balance",
+      { session: {} },
+      fakeFetch as typeof fetch
+    );
+
+    expect(requested).toBe(
+      "http://127.0.0.1:43123/v2/investigations/hypothesis-balance"
+    );
+    expect(result.engineVersion).toBe("2.2.0");
+
+    await expect(
+      callPrivateIntelligence(
+        "/v2/investigations/execute",
+        {},
+        fakeFetch as typeof fetch
+      )
+    ).rejects.toThrow("Unsupported private intelligence route");
+  });
+});
