@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.alexcgodwin/localops-mcp",
   "title": "OpsChugex LocalOps MCP",
-  "description": "Production-oriented local infrastructure, endpoint, database, backup, network-topology, predictive-health, cross-node incident correlation and approval-gated remediation intelligence with RBAC, durable audit support, and private operations analysis for Windows and Linux.",
-  "version": "1.6.0",
+  "description": "Production-oriented local infrastructure, endpoint, database, backup, network-topology, predictive-health, cross-node incident correlation, incident memory and approval-gated remediation intelligence with RBAC, durable audit support, and private operations analysis for Windows and Linux.",
+  "version": "1.7.0",
   "repository": {
     "url": "https://github.com/alexcgodwin/localops-mcp",
     "source": "github",
@@ -13,7 +13,7 @@
     {
       "registryType": "npm",
       "identifier": "opschugex-localops-mcp",
-      "version": "1.6.0",
+      "version": "1.7.0",
       "transport": {
         "type": "stdio"
       }
