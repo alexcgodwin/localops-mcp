@@ -159,7 +159,7 @@ export async function callPrivateIntelligence(
   const url = intelligenceUrl();
   const token = intelligenceToken();
 
-  if (!/^\/v1\/(correlate\/(process|service|identity|network|persistence)|timeline|root-cause\/(rank|confidence|evidence-chain|investigation|change-trigger|blast-radius|remediation)|fleet\/(compare|configuration-drift|software-drift|patch-drift|certificate-drift|security-drift|incident-correlation|incident-timeline|shared-cause-analysis|incident-scope)|incidents\/(fingerprint|compare|recurrence|history-summary|resolution-patterns|resolution-history)|infrastructure\/(device-health|topology)|database\/(health|replication|contention|pressure)|backup\/(snapshot-health|recovery-readiness|risk-correlation)|topology\/(dependency-path|path-redundancy|failure-domains|change-impact)|remediation\/workflow-plan|predictive\/health)$/.test(path)) {
+  if (!/^\/v1\/(correlate\/(process|service|identity|network|persistence)|timeline|root-cause\/(rank|confidence|evidence-chain|investigation|change-trigger|blast-radius|remediation)|fleet\/(compare|configuration-drift|software-drift|patch-drift|certificate-drift|security-drift|incident-correlation|incident-timeline|shared-cause-analysis|incident-scope)|incidents\/(fingerprint|compare|recurrence|history-summary|resolution-patterns|resolution-history|knowledge-search|neighbors|clusters)|infrastructure\/(device-health|topology)|database\/(health|replication|contention|pressure)|backup\/(snapshot-health|recovery-readiness|risk-correlation)|topology\/(dependency-path|path-redundancy|failure-domains|change-impact)|remediation\/workflow-plan|predictive\/health)$/.test(path)) {
     throw new Error("Unsupported private intelligence route.");
   }
 

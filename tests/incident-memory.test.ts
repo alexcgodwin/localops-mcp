@@ -176,7 +176,10 @@ describe("v1.8 public durable incident knowledge", () => {
       ["/v1/incidents/recurrence", "1.7.0"],
       ["/v1/incidents/history-summary", "1.7.0"],
       ["/v1/incidents/resolution-patterns", "1.8.0"],
-      ["/v1/incidents/resolution-history", "1.8.0"]
+      ["/v1/incidents/resolution-history", "1.8.0"],
+      ["/v1/incidents/knowledge-search", "1.9.0"],
+      ["/v1/incidents/neighbors", "1.9.0"],
+      ["/v1/incidents/clusters", "1.9.0"]
     ] as const;
 
     for (const [route, version] of allowed) {

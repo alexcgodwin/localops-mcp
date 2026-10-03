@@ -1,7 +1,7 @@
 {
   "name": "opschugex-localops-mcp",
-  "version": "1.8.0",
-  "description": "OpsChugex LocalOps MCP for local infrastructure, endpoint, database, backup, topology, predictive health, cross-node correlation, durable incident knowledge and approval-gated remediation intelligence on Windows and Linux.",
+  "version": "1.9.0",
+  "description": "OpsChugex LocalOps MCP for local infrastructure, endpoint, database, backup, topology, predictive health, incident knowledge search, case clustering and approval-gated remediation intelligence on Windows and Linux.",
   "type": "module",
   "mcpName": "io.github.alexcgodwin/localops-mcp",
   "bin": {
@@ -43,7 +43,10 @@
     "incident-memory",
     "recurrence-analysis",
     "incident-resolution",
-    "durable-operations-knowledge"
+    "durable-operations-knowledge",
+    "incident-search",
+    "case-clustering",
+    "similarity-analysis"
   ],
   "author": "Alex C. Godwin",
   "license": "MIT",

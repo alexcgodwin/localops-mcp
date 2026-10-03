@@ -186,6 +186,80 @@ const resolutionHistorySchema = z.object({
   limitations: z.array(z.string())
 });
 
+const knowledgeCaseSchema = z.object({
+  caseId: z.string(),
+  recordedAt: z.string(),
+  title: z.string().nullable(),
+  severity: z.string(),
+  scope: z.string(),
+  signature: z.string(),
+  signalIds: z.array(z.string()),
+  tags: z.array(z.string()),
+  causeCategories: z.array(z.string()),
+  outcomeStatus: outcomeStatusSchema.nullable(),
+  resolutionCategory: resolutionCategorySchema.nullable(),
+  outcomeVerified: z.boolean().nullable()
+});
+
+const knowledgeSearchSchema = z.object({
+  engineVersion: z.literal("1.9.0"),
+  generatedAt: z.string(),
+  searchedCaseCount: z.number(),
+  queryCriteriaCount: z.number(),
+  resultCount: z.number(),
+  minMatchPercent: z.number().min(0).max(100),
+  results: z.array(knowledgeCaseSchema.extend({
+    matchPercent: z.number().min(0).max(100),
+    matchedCriteria: z.array(z.string())
+  })),
+  interpretation: z.string(),
+  limitations: z.array(z.string())
+});
+
+const neighborSchema = z.object({
+  engineVersion: z.literal("1.9.0"),
+  generatedAt: z.string(),
+  targetCaseId: z.string(),
+  searchedCaseCount: z.number(),
+  neighborCount: z.number(),
+  minSimilarityPercent: z.number().min(0).max(100),
+  neighbors: z.array(knowledgeCaseSchema.extend({
+    similarityPercent: z.number().min(0).max(100),
+    sharedSignalIds: z.array(z.string()),
+    sharedTags: z.array(z.string()),
+    sharedCauseCategories: z.array(z.string())
+  })),
+  interpretation: z.string(),
+  limitations: z.array(z.string())
+});
+
+const clusterSchema = z.object({
+  engineVersion: z.literal("1.9.0"),
+  generatedAt: z.string(),
+  caseCount: z.number(),
+  thresholdPercent: z.number().min(1).max(100),
+  clusterCount: z.number(),
+  returnedClusterCount: z.number(),
+  clusteredCaseCount: z.number(),
+  singletonCaseCount: z.number(),
+  clusters: z.array(z.object({
+    clusterId: z.string(),
+    caseCount: z.number(),
+    caseIds: z.array(z.string()),
+    averageSimilarityPercent: z.number().min(0).max(100),
+    commonSignalIds: z.array(z.string()),
+    commonTags: z.array(z.string()),
+    commonCauseCategories: z.array(z.string()),
+    outcomeStatuses: z.array(outcomeStatusSchema),
+    resolutionCategories: z.array(resolutionCategorySchema)
+  })),
+  interpretation: z.string(),
+  limitations: z.array(z.string())
+});
+
+const severitySchema = z.enum(["none", "low", "medium", "high"]);
+const scopeSchema = z.enum(["none", "localized", "multi-node", "fleet-wide"]);
+
 const historySchema = z.object({
   engineVersion: z.literal("1.7.0"),
   generatedAt: z.string(),
@@ -434,5 +508,126 @@ export function registerIncidentMemoryTools(server: McpServer) {
         }
       ));
     }
+  );
+
+  server.registerTool(
+    "incident_knowledge_search",
+    {
+      title: "Incident Knowledge Search",
+      description:
+        "Search retained incident knowledge using bounded structured metadata such as signals, tags, severity, scope and recorded outcomes. Match percentage is query coverage, not probability or causal confidence.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({
+        caseIds: z.array(z.string().min(1).max(84)).max(200).optional(),
+        signalIds: z.array(z.string().min(1).max(128)).min(1).max(20).optional(),
+        tags: z.array(z.string().min(1).max(128)).min(1).max(20).optional(),
+        causeCategories: z.array(z.string().min(1).max(128)).min(1).max(20).optional(),
+        severities: z.array(severitySchema).min(1).max(4).optional(),
+        scopes: z.array(scopeSchema).min(1).max(4).optional(),
+        outcomeStatuses: z.array(outcomeStatusSchema).min(1).max(4).optional(),
+        resolutionCategories: z.array(resolutionCategorySchema).min(1).max(7).optional(),
+        minMatchPercent: z.number().int().min(0).max(100).optional(),
+        limit: z.number().int().min(1).max(50).optional()
+      }),
+      outputSchema: knowledgeSearchSchema
+    },
+    async ({
+      caseIds,
+      signalIds,
+      tags,
+      causeCategories,
+      severities,
+      scopes,
+      outcomeStatuses,
+      resolutionCategories,
+      minMatchPercent,
+      limit
+    }) => {
+      const criteriaCount = [
+        ...(signalIds ?? []),
+        ...(tags ?? []),
+        ...(causeCategories ?? []),
+        ...(severities ?? []),
+        ...(scopes ?? []),
+        ...(outcomeStatuses ?? []),
+        ...(resolutionCategories ?? [])
+      ].length;
+      if (criteriaCount === 0) {
+        throw new Error(
+          "At least one structured incident search criterion is required."
+        );
+      }
+
+      return toolResult(await callPrivateIntelligence(
+        "/v1/incidents/knowledge-search",
+        {
+          ...await incidentMemoryBundle(selectedCaseIds(caseIds)),
+          query: {
+            signalIds,
+            tags,
+            causeCategories,
+            severities,
+            scopes,
+            outcomeStatuses,
+            resolutionCategories
+          },
+          minMatchPercent: minMatchPercent ?? 50,
+          limit: limit ?? 20
+        }
+      ));
+    }
+  );
+
+  server.registerTool(
+    "incident_case_neighbors",
+    {
+      title: "Incident Case Neighbors",
+      description:
+        "Find the most similar retained incident cases to one selected case using normalized fingerprint overlap. Similarity does not prove a shared root cause or justify reusing a past response.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({
+        caseId: z.string().min(1).max(84),
+        minSimilarityPercent: z.number().int().min(0).max(100).optional(),
+        limit: z.number().int().min(1).max(20).optional()
+      }),
+      outputSchema: neighborSchema
+    },
+    async ({ caseId, minSimilarityPercent, limit }) => {
+      await incidentCaseDetails(caseId);
+      return toolResult(await callPrivateIntelligence(
+        "/v1/incidents/neighbors",
+        {
+          ...await incidentMemoryBundle(),
+          targetCaseId: caseId,
+          minSimilarityPercent: minSimilarityPercent ?? 1,
+          limit: limit ?? 10
+        }
+      ));
+    }
+  );
+
+  server.registerTool(
+    "incident_case_clusters",
+    {
+      title: "Incident Case Clusters",
+      description:
+        "Group retained incident cases into threshold-connected similarity clusters using normalized fingerprint overlap. Clusters are descriptive and do not establish common cause.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({
+        caseIds: z.array(z.string().min(1).max(84)).max(200).optional(),
+        minSimilarityPercent: z.number().int().min(1).max(100).optional(),
+        limit: z.number().int().min(1).max(50).optional()
+      }),
+      outputSchema: clusterSchema
+    },
+    async ({ caseIds, minSimilarityPercent, limit }) =>
+      toolResult(await callPrivateIntelligence(
+        "/v1/incidents/clusters",
+        {
+          ...await incidentMemoryBundle(selectedCaseIds(caseIds)),
+          minSimilarityPercent: minSimilarityPercent ?? 50,
+          limit: limit ?? 20
+        }
+      ))
   );
 }
