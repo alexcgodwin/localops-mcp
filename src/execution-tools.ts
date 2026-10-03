@@ -102,6 +102,8 @@ export function registerControlledExecutionTools(server: McpServer) {
         riskTier: z.literal("R2"),
         preflight: z.record(z.string(), z.unknown()),
         parameters: z.record(z.string(), z.unknown()),
+        workflowId: z.string().nullable(),
+        workflowStepId: z.string().nullable(),
         expiresAt: z.string(),
         confirmationRequired: z.literal("APPROVE"),
         rollback: z.string(),
@@ -143,6 +145,8 @@ export function registerControlledExecutionTools(server: McpServer) {
         verified: z.boolean(),
         result: z.unknown(),
         rollback: z.string(),
+        workflowId: z.string().nullable(),
+        workflowStepId: z.string().nullable(),
         auditId: z.string(),
         durableAudit: z.object({
           enabled: z.boolean(),
@@ -189,7 +193,9 @@ export function registerControlledExecutionTools(server: McpServer) {
             executed: z.boolean(),
             verified: z.boolean(),
             result: z.string(),
-            rollback: z.string()
+            rollback: z.string(),
+            workflowId: z.string().nullable(),
+            workflowStepId: z.string().nullable()
           })
         ),
         persistence: z.string()

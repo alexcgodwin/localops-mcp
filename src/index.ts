@@ -27,8 +27,9 @@ import { registerInfrastructureTools } from "./infrastructure-tools.js";
 import { registerPlatformTools } from "./platform-tools.js";
 import { registerDatabaseTools } from "./database-tools.js";
 import { registerStorageBackupTools } from "./storage-backup-tools.js";
+import { registerRemediationWorkflowTools } from "./remediation-tools.js";
 
-const VERSION = "1.3.0";
+const VERSION = "1.4.0";
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -84,7 +85,7 @@ export function createServer() {
     { name: "opschugex-localops-mcp", version: VERSION },
     {
       instructions:
-        "OpsChugex LocalOps v1.3 adds Network Topology Intelligence on top of the production v1.2 platform. Bounded caller-supplied private-infrastructure graphs can be analyzed for dependency paths, path redundancy, failure domains and what-if connectivity impact through the loopback-only private intelligence core. LocalOps performs no subnet scanning, remote login, SNMP writes, route mutation, lateral execution or automatic remediation. Existing RBAC, approval-gated local execution and R3+ restrictions remain unchanged."
+        "OpsChugex LocalOps v1.4 adds Automated Remediation Workflows on top of the production v1.3 platform. The private core creates evidence-based remediation plans, while the public MCP enforces ordered validation, R2-only workflow execution, current RBAC and allowlists, durable audit, one-time approval tokens, exact APPROVE confirmation and post-action verification. Workflow-bound tokens cannot be executed through the generic execution path. R3+ actions remain unavailable and no remediation step is automatically authorized."
     }
   );
 
@@ -283,6 +284,7 @@ export function createServer() {
   registerPlatformTools(server);
   registerDatabaseTools(server);
   registerStorageBackupTools(server);
+  registerRemediationWorkflowTools(server);
 
   return server;
 }

@@ -30,6 +30,8 @@ export type DurableAuditEvent = {
   executed: boolean;
   verified: boolean;
   outcome: "success" | "failure";
+  workflowId?: string | null;
+  workflowStepId?: string | null;
 };
 
 const ROLE_PERMISSIONS: Record<LocalOpsRole, PolicyOperation[]> = {
