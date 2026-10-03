@@ -10,7 +10,7 @@
 
 OpsChugex LocalOps MCP is a cross-platform Model Context Protocol server for safely inspecting local Windows and Linux systems. It is designed as the local/private-infrastructure counterpart to the Cloud DevOps MCP Server.
 
-Version 1.1.0 adds Database Intelligence to the production LocalOps platform. PostgreSQL, MySQL/MariaDB, SQL Server and Redis can be inspected through named environment-configured profiles and fixed read-only telemetry queries. Database health, replication, contention and workload-pressure reasoning run through the private OpsChugex LocalOps Intelligence Core. Passwords, connection strings, arbitrary SQL, query text, write operations and transaction termination are not exposed through MCP.
+Version 1.2.0 adds Storage & Backup Intelligence to the production LocalOps platform while retaining v1.1 Database Intelligence. Local backup roots are accessed only through named environment-configured profiles. LocalOps can collect bounded backup inventory, freshness, retention, filesystem-capacity, RPO/RTO and restore-verification evidence, then use the private OpsChugex LocalOps Intelligence Core for snapshot health, recovery readiness and backup-risk correlation. Arbitrary filesystem paths, restore execution, backup deletion, pruning and storage mutation are not exposed through MCP.
 
 ## Why this exists
 
@@ -70,12 +70,20 @@ LocalOps starts at the operating-system layer:
 - PostgreSQL, MySQL/MariaDB, SQL Server and Redis read-only telemetry
 - normalized database inventory, connection, capacity, replication, lock and workload-pressure evidence
 - private database health, replication, contention and pressure reasoning
+- named local backup profiles without arbitrary MCP-supplied paths
+- bounded backup artifact inventory, age, size and recent-volume evidence
+- backup freshness and retention checks
+- non-destructive newest-artifact metadata/readability validation
+- point-in-time storage-growth comparison from a caller-supplied baseline
+- backup-root filesystem capacity evidence
+- RPO/RTO and restore-verification evidence
+- private backup snapshot health, recovery readiness and risk correlation
 - normalized Windows/Linux outputs
 - explicit R0-R2 safety boundaries with R3+ blocked
 
 The long-term goal is evidence correlation across endpoints, private infrastructure, networking, storage and virtualization while keeping advanced OpsChugex intelligence proprietary.
 
-## v1.1 tools
+## v1.2 tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -179,6 +187,16 @@ The long-term goal is evidence correlation across endpoints, private infrastruct
 | `database_replication_health` | Analyze replication role/state/lag evidence without assuming standalone databases are unhealthy |
 | `database_lock_summary` | Analyze waiting-lock/blocked-connection contention without terminating transactions |
 | `database_query_pressure` | Analyze connection utilization and workload-pressure evidence without collecting query text |
+| `backup_profiles` | List named backup-profile metadata; arbitrary MCP-supplied paths are not accepted |
+| `backup_snapshot` | Collect normalized backup inventory, freshness, retention, restore-point, capacity and recovery-objective evidence |
+| `backup_inventory` | Return bounded backup file-count, size and age evidence without reading backup contents |
+| `backup_freshness` | Compare the newest artifact with the configured expected interval and RPO |
+| `backup_restore_point_validation` | Validate newest-artifact presence, non-zero size and read access without executing a restore |
+| `backup_retention` | Report bounded artifacts older than the configured retention target without deleting them |
+| `backup_storage_growth` | Compare current inventory totals with an explicit caller-supplied prior baseline |
+| `backup_snapshot_health` | Analyze normalized backup health through the private intelligence core |
+| `backup_recovery_readiness` | Analyze restore-point, RPO, RTO and restore-verification evidence without executing a restore |
+| `backup_risk_correlation` | Correlate freshness, capacity, retention, restore-point and recovery-objective risk signals |
 
 ## Architecture
 
@@ -195,7 +213,7 @@ flowchart TD
     Client2 --> Core["Private OpsChugex LocalOps Intelligence Core"]
 ```
 
-The public MCP owns protocol handling, safe collectors, normalized node/fleet/infrastructure/database schemas, fixed read-only database adapters, local virtualization/storage/power adapters, the in-memory fleet registry, process-bound RBAC/policy enforcement, local execution approvals, optional durable audit storage, the loopback client and operator-facing tools. The private OpsChugex intelligence core owns correlation, root-cause ranking, fleet drift, private device-health/topology reasoning and database health/replication/contention/pressure analysis.
+The public MCP owns protocol handling, safe collectors, normalized node/fleet/infrastructure/database/backup schemas, fixed read-only database adapters, bounded local backup metadata collection, local virtualization/storage/power adapters, the in-memory fleet registry, process-bound RBAC/policy enforcement, local execution approvals, optional durable audit storage, the loopback client and operator-facing tools. The private OpsChugex intelligence core owns correlation, root-cause ranking, fleet drift, private device-health/topology reasoning, database health/replication/contention/pressure analysis, and backup snapshot-health/recovery-readiness/risk correlation.
 
 ## Quickstart
 
@@ -225,7 +243,7 @@ npm run dev
 
 ### Optional private intelligence core
 
-The v0.6 correlation tools, v0.7 root-cause tools, v0.8 private fleet comparison/drift tools and v0.9 network-device/topology analysis require the private OpsChugex LocalOps Intelligence Core to be running locally. Configure the public MCP process with:
+The correlation, root-cause, private fleet, private-infrastructure, database-analysis and v1.2 backup-analysis tools require the private OpsChugex LocalOps Intelligence Core to be running locally. Configure the public MCP process with:
 
 ```text
 LOCALOPS_INTELLIGENCE_URL=http://127.0.0.1:43123
@@ -262,9 +280,21 @@ Supported engines are `postgresql`, `mysql` (including MariaDB-compatible teleme
 
 SQL Server may use `"integratedAuth":true` instead of a password environment variable. Database profile parsing is included in `production_readiness`.
 
+### v1.2 backup profiles
+
+Storage and backup tools use named local roots from `LOCALOPS_BACKUP_PROFILES`. MCP callers provide only a profile ID; they cannot supply an arbitrary filesystem path.
+
+Example:
+
+```text
+LOCALOPS_BACKUP_PROFILES=[{"id":"app-nightly","rootPath":"/srv/backups/app","kind":"database-dump","extensions":[".bak",".zip"],"expectedIntervalHours":24,"retentionDays":30,"rpoHours":24,"rtoMinutes":120,"lastVerifiedRestoreAt":"2026-10-01T20:00:00Z","lastRestoreDurationMinutes":45}]
+```
+
+On Windows, use an absolute Windows path with valid JSON escaping. `lastVerifiedRestoreAt` and `lastRestoreDurationMinutes` are operator-supplied evidence from an earlier restore test. LocalOps does not execute a restore to populate them. Backup profile parsing is included in `production_readiness`.
+
 ## Safety model
 
-v1.1 keeps the local approval-gated execution boundary, production RBAC/audit controls, and adds read-only database telemetry through named profiles:
+v1.2 keeps the local approval-gated execution boundary and production RBAC/audit controls, while adding read-only database plus storage/backup telemetry through named profiles:
 
 ```text
 R0 READ                     allowed
@@ -277,6 +307,7 @@ PRIVATE INFRASTRUCTURE         local reads + caller-supplied snapshots only
 RBAC / POLICY                  process-bound, enforced for execution
 DURABLE AUDIT                  optional metadata-only local JSONL
 DATABASE INTELLIGENCE          fixed read-only queries, named profiles only
+STORAGE / BACKUP INTELLIGENCE  bounded metadata, named local profiles only
 ```
 
 Important controls:
@@ -343,6 +374,15 @@ Important controls:
 - standalone or intentionally non-replicated databases are not automatically treated as unhealthy
 - capacity values do not invent free disk space or growth risk when the engine does not expose those facts
 - malformed database profile configuration is surfaced by production readiness
+- backup tools accept configured profile IDs only, not arbitrary filesystem paths
+- backup scans are bounded to 5,000 matching files and a maximum directory depth of 16
+- symbolic links are not followed by the backup collector
+- restore-point validation checks metadata, non-zero size and one-byte read access only; it does not execute or certify a restore
+- backup growth uses an explicit caller-supplied prior baseline; LocalOps does not invent or persist trend history
+- RPO/RTO results are evidence comparisons against configured objectives, not guarantees of recoverability
+- restore-verification timestamps and durations are operator-supplied evidence from prior restore testing
+- no backup restore, delete, prune, format or storage-mutation tool is exposed
+- malformed backup profile configuration is surfaced by production readiness
 - bounded list sizes
 - strict PID validation
 - strict service-name validation
@@ -356,9 +396,9 @@ Some platform collectors may require local permission to inspect specific proces
 
 This repository is the public implementation and portfolio-facing gateway.
 
-The separate private **OpsChugex LocalOps Intelligence Core** implements v0.6 correlation, v0.7 root-cause intelligence, v0.8 fleet drift, v0.9 private device-health/topology reasoning and v1.1 database health/replication/contention/pressure analysis. Future private capabilities include predictive health, deeper cross-node/cross-service incident correlation and orchestration.
+The separate private **OpsChugex LocalOps Intelligence Core** implements correlation, root-cause intelligence, fleet drift, private device-health/topology reasoning, database health/replication/contention/pressure analysis, and v1.2 backup snapshot-health/recovery-readiness/risk correlation. Future private capabilities include predictive health, deeper cross-node/cross-service incident correlation and orchestration.
 
-The public repository contains safe collection, bounded snapshots, schemas, fixed read-only database adapters, local infrastructure adapters, the in-memory fleet registry and the loopback client. Proprietary correlation, ranking, drift, topology and database-analysis algorithms are not included in this MIT repository.
+The public repository contains safe collection, bounded snapshots, schemas, fixed read-only database adapters, bounded local backup metadata collectors, local infrastructure adapters, the in-memory fleet registry and the loopback client. Proprietary correlation, ranking, drift, topology, database-analysis and backup-risk algorithms are not included in this MIT repository.
 
 ## Roadmap
 
@@ -375,7 +415,7 @@ The public repository contains safe collection, bounded snapshots, schemas, fixe
 | 0.9 | Private infrastructure and virtualization, completed |
 | 1.0 | Production LocalOps platform, completed |
 | 1.1 | Database intelligence, completed |
-| 1.2 | Storage and backup intelligence |
+| 1.2 | Storage and backup intelligence, completed |
 
 ## Development principles
 

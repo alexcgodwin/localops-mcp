@@ -19,7 +19,8 @@ const saved = {
   services: process.env.LOCALOPS_ALLOWED_SERVICES,
   audit: process.env.LOCALOPS_AUDIT_PERSISTENCE,
   dataDir: process.env.LOCALOPS_DATA_DIR,
-  databaseProfiles: process.env.LOCALOPS_DATABASE_PROFILES
+  databaseProfiles: process.env.LOCALOPS_DATABASE_PROFILES,
+  backupProfiles: process.env.LOCALOPS_BACKUP_PROFILES
 };
 
 const tempDirs: string[] = [];
@@ -38,6 +39,7 @@ afterEach(async () => {
   restore("audit", "LOCALOPS_AUDIT_PERSISTENCE");
   restore("dataDir", "LOCALOPS_DATA_DIR");
   restore("databaseProfiles", "LOCALOPS_DATABASE_PROFILES");
+  restore("backupProfiles", "LOCALOPS_BACKUP_PROFILES");
 
   await Promise.all(
     tempDirs.splice(0).map((directory) =>
@@ -130,6 +132,15 @@ describe("v1.0 production readiness", () => {
     const checks = productionReadinessInput();
     expect(
       checks.find((item) => item.id === "database-profiles")?.status
+    ).toBe("fail");
+  });
+
+  it("fails backup readiness when profile configuration is malformed", () => {
+    process.env.LOCALOPS_BACKUP_PROFILES = "{not-json";
+
+    const checks = productionReadinessInput();
+    expect(
+      checks.find((item) => item.id === "backup-profiles")?.status
     ).toBe("fail");
   });
 });

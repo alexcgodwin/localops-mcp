@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.0
+
+- Added Storage & Backup Intelligence through named profiles configured with `LOCALOPS_BACKUP_PROFILES`; MCP tools accept profile IDs rather than arbitrary filesystem paths.
+- Added `backup_profiles`, `backup_snapshot`, `backup_inventory`, `backup_freshness`, `backup_restore_point_validation`, `backup_retention`, `backup_storage_growth`, `backup_snapshot_health`, `backup_recovery_readiness` and `backup_risk_correlation`.
+- Added bounded local backup inventory with a 5,000-file limit, maximum directory depth of 16, extension filtering and no symbolic-link traversal.
+- Added backup freshness, retention, filesystem-capacity, RPO and operator-supplied RTO/restore-verification evidence.
+- Added non-destructive restore-point metadata validation for presence, non-zero size and read access; LocalOps does not execute restores or claim application-level recoverability.
+- Added caller-supplied point-in-time backup growth comparison without persisting or inventing historical trend data.
+- Added private-core snapshot-health, recovery-readiness and multi-signal backup-risk correlation.
+- Added backup-profile validation to `production_readiness`.
+- Restore, delete, prune, format and storage-mutation operations remain unavailable.
+
 ## 1.1.0
 
 - Added Database Intelligence for PostgreSQL, MySQL/MariaDB, SQL Server and Redis.

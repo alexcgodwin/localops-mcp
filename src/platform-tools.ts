@@ -14,7 +14,7 @@ import {
   type RiskTier
 } from "./platform.js";
 
-const VERSION = "1.1.0";
+const VERSION = "1.2.0";
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -52,11 +52,11 @@ export function registerPlatformTools(server: McpServer) {
     {
       title: "LocalOps Platform Status",
       description:
-        "Show the v1.1 production control-plane state: process-bound RBAC identity, execution enablement, durable audit state, stdio transport and private intelligence reachability.",
+        "Show the v1.2 production control-plane state: process-bound RBAC identity, execution enablement, durable audit state, stdio transport and private intelligence reachability.",
       annotations: readOnlyAnnotations,
       inputSchema: z.object({}),
       outputSchema: z.object({
-        version: z.literal("1.1.0"),
+        version: z.literal("1.2.0"),
         transport: z.literal("stdio"),
         operatorId: z.string(),
         role: roleSchema,
