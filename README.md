@@ -10,7 +10,7 @@
 
 OpsChugex LocalOps MCP is a cross-platform Model Context Protocol server for safely inspecting local Windows and Linux systems. It is designed as the local/private-infrastructure counterpart to the Cloud DevOps MCP Server.
 
-Version 1.2.0 adds Storage & Backup Intelligence to the production LocalOps platform while retaining v1.1 Database Intelligence. Local backup roots are accessed only through named environment-configured profiles. LocalOps can collect bounded backup inventory, freshness, retention, filesystem-capacity, RPO/RTO and restore-verification evidence, then use the private OpsChugex LocalOps Intelligence Core for snapshot health, recovery readiness and backup-risk correlation. Arbitrary filesystem paths, restore execution, backup deletion, pruning and storage mutation are not exposed through MCP.
+Version 1.3.0 adds Network Topology Intelligence to the production LocalOps platform while retaining Database and Storage & Backup Intelligence. Bounded caller-supplied private-infrastructure graphs can now be analyzed for shortest dependency paths, source-to-target redundancy, failure domains and what-if connectivity impact through the private OpsChugex LocalOps Intelligence Core. LocalOps does not perform subnet scanning, remote login, SNMP writes, route changes, lateral execution or automatic network remediation.
 
 ## Why this exists
 
@@ -66,6 +66,10 @@ LocalOps starts at the operating-system layer:
 - local Windows battery/UPS or Linux UPower telemetry
 - private network-device health from caller-supplied snapshots
 - private topology components, isolated nodes, down links and articulation/dependency concentration
+- shortest dependency-path analysis across submitted private-infrastructure graphs
+- source-to-target single-link and intermediate-node redundancy analysis
+- topology failure-domain connectivity-loss analysis
+- bounded what-if network change-impact simulation without executing a change
 - named database profiles without credential exposure
 - PostgreSQL, MySQL/MariaDB, SQL Server and Redis read-only telemetry
 - normalized database inventory, connection, capacity, replication, lock and workload-pressure evidence
@@ -83,7 +87,7 @@ LocalOps starts at the operating-system layer:
 
 The long-term goal is evidence correlation across endpoints, private infrastructure, networking, storage and virtualization while keeping advanced OpsChugex intelligence proprietary.
 
-## v1.2 tools
+## v1.3 tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -174,6 +178,10 @@ The long-term goal is evidence correlation across endpoints, private infrastruct
 | `ups_health` | Read locally exposed Windows battery/UPS or Linux UPower telemetry |
 | `network_device_health` | Analyze bounded caller-supplied private-device snapshots through the private core |
 | `private_network_topology` | Analyze caller-supplied private-infrastructure nodes/links without discovery or probing |
+| `network_dependency_path` | Find the shortest submitted non-down dependency path between two explicit devices |
+| `network_path_redundancy` | Check source-to-target tolerance to one primary-path link or intermediate-node loss |
+| `network_failure_domains` | Measure node and non-parallel active-link connectivity-loss impact across the submitted graph |
+| `network_change_impact` | Run a bounded what-if connectivity simulation for explicitly unavailable nodes or endpoint-pair links |
 | `platform_status` | Show v1.0 transport, process-bound identity/role, execution state, durable-audit state and private-core reachability |
 | `policy_status` | Show RBAC permissions and the enforced R0-R3+ boundary |
 | `evaluate_policy` | Evaluate one operation/risk tier without executing anything |
@@ -213,7 +221,7 @@ flowchart TD
     Client2 --> Core["Private OpsChugex LocalOps Intelligence Core"]
 ```
 
-The public MCP owns protocol handling, safe collectors, normalized node/fleet/infrastructure/database/backup schemas, fixed read-only database adapters, bounded local backup metadata collection, local virtualization/storage/power adapters, the in-memory fleet registry, process-bound RBAC/policy enforcement, local execution approvals, optional durable audit storage, the loopback client and operator-facing tools. The private OpsChugex intelligence core owns correlation, root-cause ranking, fleet drift, private device-health/topology reasoning, database health/replication/contention/pressure analysis, and backup snapshot-health/recovery-readiness/risk correlation.
+The public MCP owns protocol handling, safe collectors, normalized node/fleet/infrastructure/database/backup schemas, bounded topology request contracts, fixed read-only database adapters, bounded local backup metadata collection, local virtualization/storage/power adapters, the in-memory fleet registry, process-bound RBAC/policy enforcement, local execution approvals, optional durable audit storage, the loopback client and operator-facing tools. The private OpsChugex intelligence core owns correlation, root-cause ranking, fleet drift, private device-health/topology reasoning, v1.3 dependency-path/redundancy/failure-domain/change-impact algorithms, database health/replication/contention/pressure analysis, and backup snapshot-health/recovery-readiness/risk correlation.
 
 ## Quickstart
 
@@ -243,7 +251,7 @@ npm run dev
 
 ### Optional private intelligence core
 
-The correlation, root-cause, private fleet, private-infrastructure, database-analysis and v1.2 backup-analysis tools require the private OpsChugex LocalOps Intelligence Core to be running locally. Configure the public MCP process with:
+The correlation, root-cause, private fleet, private-infrastructure, database, backup and v1.3 network-topology analysis tools require the private OpsChugex LocalOps Intelligence Core to be running locally. Configure the public MCP process with:
 
 ```text
 LOCALOPS_INTELLIGENCE_URL=http://127.0.0.1:43123
@@ -294,7 +302,7 @@ On Windows, use an absolute Windows path with valid JSON escaping. `lastVerified
 
 ## Safety model
 
-v1.2 keeps the local approval-gated execution boundary and production RBAC/audit controls, while adding read-only database plus storage/backup telemetry through named profiles:
+v1.3 keeps the local approval-gated execution boundary and production RBAC/audit controls, while adding analysis-only Network Topology Intelligence on top of the existing database and storage/backup capabilities:
 
 ```text
 R0 READ                     allowed
@@ -308,6 +316,7 @@ RBAC / POLICY                  process-bound, enforced for execution
 DURABLE AUDIT                  optional metadata-only local JSONL
 DATABASE INTELLIGENCE          fixed read-only queries, named profiles only
 STORAGE / BACKUP INTELLIGENCE  bounded metadata, named local profiles only
+NETWORK TOPOLOGY INTELLIGENCE  bounded submitted graphs, analysis-only
 ```
 
 Important controls:
@@ -366,6 +375,12 @@ Important controls:
 - private-infrastructure snapshots do not authenticate or attest device identity
 - topology is derived only from submitted nodes/links and is not active discovery
 - articulation nodes indicate dependency concentration in submitted topology, not guaranteed production single points of failure
+- v1.3 dependency paths use only submitted non-down links; unknown-state links may reduce certainty
+- path redundancy simulates one primary-path link or intermediate-node loss at a time and does not verify physical path diversity
+- failure-domain results describe graph connectivity impact, not guaranteed application outage
+- change-impact analysis is what-if only and does not execute network changes
+- endpoint-pair change simulation disables all submitted links between those endpoints
+- no subnet scanning, remote login, route mutation, firewall mutation, SNMP write, lateral execution or automatic network remediation is exposed
 - database tools accept profile IDs only, not connection strings or arbitrary SQL
 - database passwords are referenced through separate environment variables and are never returned in profile metadata
 - fixed database telemetry queries do not collect application query text
@@ -396,9 +411,9 @@ Some platform collectors may require local permission to inspect specific proces
 
 This repository is the public implementation and portfolio-facing gateway.
 
-The separate private **OpsChugex LocalOps Intelligence Core** implements correlation, root-cause intelligence, fleet drift, private device-health/topology reasoning, database health/replication/contention/pressure analysis, and v1.2 backup snapshot-health/recovery-readiness/risk correlation. Future private capabilities include predictive health, deeper cross-node/cross-service incident correlation and orchestration.
+The separate private **OpsChugex LocalOps Intelligence Core** implements correlation, root-cause intelligence, fleet drift, private device-health/topology reasoning, v1.3 dependency-path/redundancy/failure-domain/change-impact analysis, database health/replication/contention/pressure analysis, and backup snapshot-health/recovery-readiness/risk correlation. Future private capabilities include predictive health, deeper cross-node/cross-service incident correlation and orchestration.
 
-The public repository contains safe collection, bounded snapshots, schemas, fixed read-only database adapters, bounded local backup metadata collectors, local infrastructure adapters, the in-memory fleet registry and the loopback client. Proprietary correlation, ranking, drift, topology, database-analysis and backup-risk algorithms are not included in this MIT repository.
+The public repository contains safe collection, bounded snapshots, schemas, fixed read-only database adapters, bounded local backup metadata collectors, bounded topology contracts, local infrastructure adapters, the in-memory fleet registry and the loopback client. Proprietary correlation, ranking, drift, topology, database-analysis and backup-risk algorithms are not included in this MIT repository.
 
 ## Roadmap
 
@@ -416,6 +431,7 @@ The public repository contains safe collection, bounded snapshots, schemas, fixe
 | 1.0 | Production LocalOps platform, completed |
 | 1.1 | Database intelligence, completed |
 | 1.2 | Storage and backup intelligence, completed |
+| 1.3 | Network topology intelligence, completed |
 
 ## Development principles
 

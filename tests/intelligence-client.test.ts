@@ -161,3 +161,57 @@ describe("private intelligence client boundary", () => {
     expect(message).not.toContain(authValue);
   });
 });
+
+
+describe("v1.3 topology route allowlist", () => {
+  it("permits only the explicit topology analysis routes", async () => {
+    process.env.LOCALOPS_INTELLIGENCE_URL = "http://127.0.0.1:43123";
+    process.env.LOCALOPS_INTELLIGENCE_TOKEN = "m".repeat(32);
+
+    let requested = "";
+    const fakeFetch = async (
+      input: string | URL | Request
+    ) => {
+      requested = String(input);
+      return new Response(
+        JSON.stringify({
+          engineVersion: "1.3.0",
+          generatedAt: new Date().toISOString(),
+          sourceId: "a",
+          targetId: "b",
+          found: false,
+          hopCount: null,
+          nodePath: [],
+          linkPath: [],
+          unknownLinkCount: 0,
+          bottleneckSpeedMbps: null,
+          interpretation: "test",
+          limitations: []
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        }
+      );
+    };
+
+    const result = await callPrivateIntelligence(
+      "/v1/topology/dependency-path",
+      {
+        bundle: {
+          generatedAt: new Date().toISOString(),
+          devices: [],
+          links: []
+        },
+        sourceId: "a",
+        targetId: "b"
+      },
+      fakeFetch as typeof fetch
+    );
+
+    expect(requested).toBe(
+      "http://127.0.0.1:43123/v1/topology/dependency-path"
+    );
+    expect(result.engineVersion).toBe("1.3.0");
+  });
+});

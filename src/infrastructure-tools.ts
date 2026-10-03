@@ -314,4 +314,180 @@ export function registerInfrastructureTools(server: McpServer) {
         infrastructureBundle(devices, links)
       ))
   );
+
+  server.registerTool(
+    "network_dependency_path",
+    {
+      title: "Network Dependency Path",
+      description:
+        "Find the shortest hop-count dependency path between two explicitly named devices in a bounded caller-supplied topology. Unknown-state links may appear; no network probing or route discovery is performed.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({
+        devices: z.array(infrastructureDeviceSchema).min(1).max(500),
+        links: z.array(linkSchema).max(1000),
+        sourceId: z.string().min(1).max(128),
+        targetId: z.string().min(1).max(128)
+      }),
+      outputSchema: z.object({
+        engineVersion: z.string(),
+        generatedAt: z.string(),
+        sourceId: z.string(),
+        targetId: z.string(),
+        found: z.boolean(),
+        hopCount: z.number().nullable(),
+        nodePath: z.array(z.string()),
+        linkPath: z.array(linkSchema),
+        unknownLinkCount: z.number(),
+        bottleneckSpeedMbps: z.number().nullable(),
+        interpretation: z.string(),
+        limitations: z.array(z.string())
+      })
+    },
+    async ({ devices, links, sourceId, targetId }) =>
+      toolResult(await callPrivateIntelligence(
+        "/v1/topology/dependency-path",
+        {
+          bundle: infrastructureBundle(devices, links),
+          sourceId,
+          targetId
+        }
+      ))
+  );
+
+  server.registerTool(
+    "network_path_redundancy",
+    {
+      title: "Network Path Redundancy",
+      description:
+        "Test whether an explicitly selected source-to-target path remains connected after one primary-path link or intermediate-node loss at a time. This is submitted-graph analysis only and does not verify physical path diversity.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({
+        devices: z.array(infrastructureDeviceSchema).min(1).max(500),
+        links: z.array(linkSchema).max(1000),
+        sourceId: z.string().min(1).max(128),
+        targetId: z.string().min(1).max(128)
+      }),
+      outputSchema: z.object({
+        engineVersion: z.string(),
+        generatedAt: z.string(),
+        sourceId: z.string(),
+        targetId: z.string(),
+        connected: z.boolean(),
+        primaryPath: z.array(z.string()),
+        alternatePath: z.array(z.string()),
+        singleLinkFailureTolerant: z.boolean().nullable(),
+        singleIntermediateNodeFailureTolerant: z.boolean().nullable(),
+        linkFailureDependencies: z.array(z.object({
+          sourceId: z.string(),
+          targetId: z.string()
+        })),
+        nodeFailureDependencies: z.array(z.string()),
+        interpretation: z.string(),
+        limitations: z.array(z.string())
+      })
+    },
+    async ({ devices, links, sourceId, targetId }) =>
+      toolResult(await callPrivateIntelligence(
+        "/v1/topology/path-redundancy",
+        {
+          bundle: infrastructureBundle(devices, links),
+          sourceId,
+          targetId
+        }
+      ))
+  );
+
+  server.registerTool(
+    "network_failure_domains",
+    {
+      title: "Network Failure Domains",
+      description:
+        "Analyze the bounded submitted topology for node and non-parallel active-link failures that create additional pairwise connectivity loss. No device state is changed.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({
+        devices: z.array(infrastructureDeviceSchema).min(1).max(500),
+        links: z.array(linkSchema).max(1000)
+      }),
+      outputSchema: z.object({
+        engineVersion: z.string(),
+        generatedAt: z.string(),
+        nodeCount: z.number(),
+        activeLinkCount: z.number(),
+        baselineComponentCount: z.number(),
+        baselineReachablePairs: z.number(),
+        articulationNodeCount: z.number(),
+        bridgeLinkCount: z.number(),
+        nodeImpacts: z.array(z.object({
+          nodeId: z.string(),
+          additionalUnreachablePairs: z.number(),
+          componentIncrease: z.number()
+        })),
+        bridgeLinks: z.array(z.object({
+          sourceId: z.string(),
+          targetId: z.string(),
+          additionalUnreachablePairs: z.number()
+        })),
+        interpretation: z.string(),
+        limitations: z.array(z.string())
+      })
+    },
+    async ({ devices, links }) =>
+      toolResult(await callPrivateIntelligence(
+        "/v1/topology/failure-domains",
+        infrastructureBundle(devices, links)
+      ))
+  );
+
+  server.registerTool(
+    "network_change_impact",
+    {
+      title: "Network Change Impact",
+      description:
+        "Run a bounded what-if topology simulation for explicitly disabled nodes and endpoint-pair links. Reports connectivity impact only; it does not execute a network change, login, scan or remediation.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({
+        devices: z.array(infrastructureDeviceSchema).min(1).max(500),
+        links: z.array(linkSchema).max(1000),
+        disabledNodeIds: z.array(
+          z.string().min(1).max(128)
+        ).max(50),
+        disabledLinks: z.array(z.object({
+          sourceId: z.string().min(1).max(128),
+          targetId: z.string().min(1).max(128)
+        })).max(100)
+      }),
+      outputSchema: z.object({
+        engineVersion: z.string(),
+        generatedAt: z.string(),
+        disabledNodeIds: z.array(z.string()),
+        disabledLinks: z.array(z.object({
+          sourceId: z.string(),
+          targetId: z.string()
+        })),
+        baselineComponentCount: z.number(),
+        changedComponentCount: z.number(),
+        baselineReachablePairs: z.number(),
+        changedReachablePairs: z.number(),
+        reachablePairLoss: z.number(),
+        newlyIsolatedNodeIds: z.array(z.string()),
+        affectedNodeIds: z.array(z.string()),
+        interpretation: z.string(),
+        limitations: z.array(z.string())
+      })
+    },
+    async ({
+      devices,
+      links,
+      disabledNodeIds,
+      disabledLinks
+    }) =>
+      toolResult(await callPrivateIntelligence(
+        "/v1/topology/change-impact",
+        {
+          bundle: infrastructureBundle(devices, links),
+          disabledNodeIds,
+          disabledLinks
+        }
+      ))
+  );
 }
