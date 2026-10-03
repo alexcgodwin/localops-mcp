@@ -5,8 +5,10 @@ import { callPrivateIntelligence } from "./intelligence-client.js";
 import {
   incidentCaseDetails,
   incidentMemoryBundle,
+  incidentMemoryStatus,
   listIncidentCases,
-  recordIncidentCase
+  recordIncidentCase,
+  recordIncidentOutcome
 } from "./incident-memory.js";
 
 const readOnlyAnnotations = {
@@ -47,11 +49,38 @@ const fingerprintSchema = z.object({
   limitations: z.array(z.string())
 });
 
+const outcomeStatusSchema = z.enum([
+  "resolved",
+  "mitigated",
+  "unresolved",
+  "false-positive"
+]);
+
+const resolutionCategorySchema = z.enum([
+  "service-recovery",
+  "resource-relief",
+  "configuration-correction",
+  "dependency-recovery",
+  "security-response",
+  "rollback",
+  "other"
+]);
+
+const outcomeSchema = z.object({
+  status: outcomeStatusSchema,
+  resolutionCategory: resolutionCategorySchema,
+  verified: z.boolean(),
+  durationMinutes: z.number().int().min(0).max(43200).nullable(),
+  recordedAt: z.string(),
+  operatorId: z.string()
+});
+
 const caseSchema = z.object({
   caseId: z.string(),
   recordedAt: z.string(),
   title: z.string().nullable(),
-  fingerprint: fingerprintSchema
+  fingerprint: fingerprintSchema,
+  outcome: outcomeSchema.nullable()
 });
 
 const caseSummarySchema = z.object({
@@ -63,7 +92,9 @@ const caseSummarySchema = z.object({
   scope: z.enum(["none", "localized", "multi-node", "fleet-wide"]),
   nodeCount: z.number(),
   affectedNodeCount: z.number(),
-  signalCount: z.number()
+  signalCount: z.number(),
+  outcomeStatus: outcomeStatusSchema.nullable(),
+  outcomeVerified: z.boolean().nullable()
 });
 const compareSchema = z.object({
   engineVersion: z.literal("1.7.0"),
@@ -103,6 +134,56 @@ const recurrenceSchema = z.object({
 const countSchema = z.object({
   value: z.string(),
   count: z.number()
+});
+
+const resolutionPatternSchema = z.object({
+  resolutionCategory: resolutionCategorySchema,
+  caseCount: z.number(),
+  verifiedCount: z.number(),
+  resolvedCount: z.number(),
+  mitigatedCount: z.number(),
+  averageDurationMinutes: z.number().nullable(),
+  commonSignalIds: z.array(z.string()),
+  commonTags: z.array(z.string()),
+  commonCauseCategories: z.array(z.string())
+});
+
+const resolutionPatternsSchema = z.object({
+  engineVersion: z.literal("1.8.0"),
+  generatedAt: z.string(),
+  caseCount: z.number(),
+  outcomeCaseCount: z.number(),
+  resolvedOrMitigatedCaseCount: z.number(),
+  patternCount: z.number(),
+  patterns: z.array(resolutionPatternSchema),
+  interpretation: z.string(),
+  limitations: z.array(z.string())
+});
+
+const resolutionHistorySchema = z.object({
+  engineVersion: z.literal("1.8.0"),
+  generatedAt: z.string(),
+  targetCaseId: z.string(),
+  historicalMatchCount: z.number(),
+  matches: z.array(z.object({
+    caseId: z.string(),
+    recordedAt: z.string(),
+    similarityPercent: z.number().min(0).max(100),
+    recurrenceBand: z.enum(["none", "weak", "possible", "strong"]),
+    outcomeStatus: outcomeStatusSchema,
+    resolutionCategory: resolutionCategorySchema,
+    verified: z.boolean(),
+    durationMinutes: z.number().nullable(),
+    sharedSignalIds: z.array(z.string()),
+    sharedTags: z.array(z.string()),
+    sharedCauseCategories: z.array(z.string())
+  })),
+  observedResolutionCategories: z.array(z.object({
+    resolutionCategory: resolutionCategorySchema,
+    caseCount: z.number()
+  })),
+  interpretation: z.string(),
+  limitations: z.array(z.string())
 });
 
 const historySchema = z.object({
@@ -159,7 +240,7 @@ export function registerIncidentMemoryTools(server: McpServer) {
         "/v1/incidents/fingerprint",
         bundle
       );
-      return toolResult(recordIncidentCase(fingerprint, title));
+      return toolResult(await recordIncidentCase(fingerprint, title));
     }
   );
 
@@ -179,7 +260,7 @@ export function registerIncidentMemoryTools(server: McpServer) {
         persistence: z.string()
       })
     },
-    async ({ limit }) => toolResult(listIncidentCases(limit))
+    async ({ limit }) => toolResult(await listIncidentCases(limit))
   );
 
   server.registerTool(
@@ -194,7 +275,7 @@ export function registerIncidentMemoryTools(server: McpServer) {
       }),
       outputSchema: caseSchema
     },
-    async ({ caseId }) => toolResult(incidentCaseDetails(caseId))
+    async ({ caseId }) => toolResult(await incidentCaseDetails(caseId))
   );
 
   server.registerTool(
@@ -216,7 +297,7 @@ export function registerIncidentMemoryTools(server: McpServer) {
       }
       return toolResult(await callPrivateIntelligence(
         "/v1/incidents/compare",
-        incidentMemoryBundle([leftCaseId, rightCaseId])
+        await incidentMemoryBundle([leftCaseId, rightCaseId])
       ));
     }
   );
@@ -236,7 +317,7 @@ export function registerIncidentMemoryTools(server: McpServer) {
     async ({ caseIds }) =>
       toolResult(await callPrivateIntelligence(
         "/v1/incidents/recurrence",
-        incidentMemoryBundle(selectedCaseIds(caseIds))
+        await incidentMemoryBundle(selectedCaseIds(caseIds))
       ))
   );
 
@@ -255,7 +336,103 @@ export function registerIncidentMemoryTools(server: McpServer) {
     async ({ caseIds }) =>
       toolResult(await callPrivateIntelligence(
         "/v1/incidents/history-summary",
-        incidentMemoryBundle(selectedCaseIds(caseIds))
+        await incidentMemoryBundle(selectedCaseIds(caseIds))
       ))
+  );
+
+  server.registerTool(
+    "incident_memory_status",
+    {
+      title: "Incident Memory Status",
+      description:
+        "Show v1.8 incident-memory capacity, outcome counts and whether optional local durable persistence is enabled.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({}),
+      outputSchema: z.object({
+        version: z.literal("1.8.0"),
+        persistenceEnabled: z.boolean(),
+        persistencePath: z.string().nullable(),
+        caseCount: z.number(),
+        outcomeCount: z.number(),
+        maxCases: z.number(),
+        storage: z.string()
+      })
+    },
+    async () => toolResult(await incidentMemoryStatus())
+  );
+
+  server.registerTool(
+    "record_incident_outcome",
+    {
+      title: "Record Incident Outcome",
+      description:
+        "Record structured operator-confirmed outcome metadata for one incident case. This stores no commands, free-form remediation text, credentials or approval tokens.",
+      annotations: registryWriteAnnotations,
+      inputSchema: z.object({
+        caseId: z.string().min(1).max(84),
+        status: outcomeStatusSchema,
+        resolutionCategory: resolutionCategorySchema,
+        verified: z.boolean(),
+        durationMinutes: z.number().int().min(0).max(43200).optional()
+      }),
+      outputSchema: caseSchema
+    },
+    async ({
+      caseId,
+      status,
+      resolutionCategory,
+      verified,
+      durationMinutes
+    }) => toolResult(await recordIncidentOutcome(caseId, {
+      status,
+      resolutionCategory,
+      verified,
+      durationMinutes
+    }))
+  );
+
+  server.registerTool(
+    "incident_resolution_patterns",
+    {
+      title: "Incident Resolution Patterns",
+      description:
+        "Summarize operator-confirmed historical resolution categories and their repeated evidence patterns through the private intelligence core. Results are historical context, not remediation instructions.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({
+        caseIds: z.array(z.string().min(1).max(84)).max(200).optional()
+      }),
+      outputSchema: resolutionPatternsSchema
+    },
+    async ({ caseIds }) =>
+      toolResult(await callPrivateIntelligence(
+        "/v1/incidents/resolution-patterns",
+        await incidentMemoryBundle(selectedCaseIds(caseIds))
+      ))
+  );
+
+  server.registerTool(
+    "incident_resolution_history",
+    {
+      title: "Incident Resolution History",
+      description:
+        "Find prior resolved or mitigated cases with overlapping normalized evidence and show their recorded outcomes. Historical outcomes are not recommendations or execution authorization.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({
+        caseId: z.string().min(1).max(84),
+        maxMatches: z.number().int().min(1).max(20).optional()
+      }),
+      outputSchema: resolutionHistorySchema
+    },
+    async ({ caseId, maxMatches }) => {
+      await incidentCaseDetails(caseId);
+      return toolResult(await callPrivateIntelligence(
+        "/v1/incidents/resolution-history",
+        {
+          ...await incidentMemoryBundle(),
+          targetCaseId: caseId,
+          maxMatches: maxMatches ?? 10
+        }
+      ));
+    }
   );
 }
