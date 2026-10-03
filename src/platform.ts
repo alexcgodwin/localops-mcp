@@ -322,6 +322,15 @@ export function productionReadinessInput() {
     });
   }
 
+  const incidentPersistence = boolEnv("LOCALOPS_INCIDENT_PERSISTENCE");
+  checks.push({
+    id: "incident-persistence",
+    status: incidentPersistence ? "pass" : "warn",
+    detail: incidentPersistence
+      ? "Durable normalized incident memory is enabled with a 200-case bound under the LocalOps data directory."
+      : "Durable incident memory is disabled; incident cases will be process-local only."
+  });
+
   try {
     const profiles = databaseProfiles();
     checks.push({

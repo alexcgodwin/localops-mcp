@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.8.0
+
+- Added Durable Incident Knowledge & Resolution Intelligence on top of v1.7 incident memory and recurrence analysis.
+- Added optional local incident persistence through `LOCALOPS_INCIDENT_PERSISTENCE=true`, using the existing LocalOps data directory and a bounded 200-case `incident-memory.json`.
+- Durable incident writes use atomic replacement and restrictive filesystem permissions where supported.
+- Added structured operator-confirmed outcomes with fixed status/category fields, verification state and optional bounded duration.
+- Added `incident_memory_status`, `record_incident_outcome`, `incident_resolution_patterns` and `incident_resolution_history`.
+- Added private resolution-pattern analysis across resolved/mitigated cases and historical resolution matching by normalized evidence overlap.
+- Resolution history is bounded to 20 matches from at most 200 supplied cases.
+- Incident persistence and outcomes exclude raw event logs, packet data, credentials, command output, approval tokens and arbitrary remediation commands/notes.
+- Historical outcomes are investigation context only and never authorize or prescribe remediation.
+
 ## 1.7.0
 
 - Added Incident Memory & Recurrence Intelligence on top of v1.6 Cross-Node Incident Correlation.
