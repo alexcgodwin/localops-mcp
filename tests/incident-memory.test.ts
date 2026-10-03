@@ -184,7 +184,7 @@ describe("v1.8 public durable incident knowledge", () => {
       ["/v2/knowledge/trace", "2.0.0"],
       ["/v2/knowledge/entity-cases", "2.0.0"],
       ["/v2/knowledge/investigation", "2.0.0"],
-      ["/v2/investigations/progress", "2.1.0"]
+      ["/v2/investigations/progress", "2.2.0"]
     ] as const;
 
     for (const [route, version] of allowed) {

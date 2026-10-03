@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.2.0
+
+- Added Investigation Hypothesis Ledger & Evidence Provenance on top of v2.1 investigation-session memory.
+- Added `add_investigation_hypothesis`, `list_investigation_hypotheses`, `investigation_hypothesis_details`, `update_investigation_hypothesis`, `link_hypothesis_evidence` and `investigation_hypothesis_analysis`.
+- Added at most 25 hypotheses per investigation session and at most 50 normalized evidence links per hypothesis.
+- Evidence links are typed as supporting, contradicting or context and carry explicit current-case, historical-case, checkpoint-derived or unverified-reference provenance.
+- Added backward-compatible loading of persisted v2.1 investigation sessions; legacy sessions receive an empty hypothesis ledger.
+- Added private evidence-balance analysis through `/v2/investigations/hypothesis-balance`, including conflict and evidence-gap reporting.
+- Hypothesis lifecycle state remains operator-controlled; evidence-balance analysis never automatically promotes, rejects or retires a hypothesis.
+- Evidence direction and provenance are investigation context only, not truth, causal probability, confidence, remediation readiness or execution authorization.
+- No investigation execution route was added or allowlisted.
+
 ## 2.1.0
 
 - Added Investigation Session Memory & Evidence Checkpoints on top of the v2 operational knowledge graph.

@@ -132,7 +132,7 @@ describe("v2.1 investigation session memory", () => {
     expect(listed.persistence).toContain("disabled");
 
     const status = await investigationSessionStatus();
-    expect(status.version).toBe("2.1.0");
+    expect(status.version).toBe("2.2.0");
     expect(status.maxSessions).toBe(50);
     expect(status.maxCheckpointsPerSession).toBe(100);
     expect(status.maxQuestionsPerSession).toBe(50);

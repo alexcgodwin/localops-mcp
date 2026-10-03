@@ -32,7 +32,7 @@ import { registerIncidentMemoryTools } from "./incident-memory-tools.js";
 import { registerKnowledgeGraphTools } from "./knowledge-graph-tools.js";
 import { registerInvestigationTools } from "./investigation-tools.js";
 
-const VERSION = "2.1.0";
+const VERSION = "2.2.0";
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -88,7 +88,7 @@ export function createServer() {
     { name: "opschugex-localops-mcp", version: VERSION },
     {
       instructions:
-        "OpsChugex LocalOps v2.1 adds Investigation Session Memory & Evidence Checkpoints on top of the v2 operational knowledge graph. Operators can create bounded case-linked investigation sessions, record normalized evidence-review checkpoints, track open/resolved/deferred questions, optionally persist session metadata locally, and analyze documentation coverage with historical case context through the private core. Review coverage is documentation progress only, not confidence, root-cause probability or remediation readiness. Session writes modify LocalOps metadata only; no new host-execution path is introduced."
+        "OpsChugex LocalOps v2.2 adds an Investigation Hypothesis Ledger & Evidence Provenance on top of v2.1 session memory. Operators can track up to 25 hypotheses per session, attach bounded supporting, contradicting or context evidence with explicit current-case, historical-case, checkpoint-derived or unverified provenance, control hypothesis lifecycle state, and request private evidence-balance analysis. Evidence balance is descriptive investigation context only; it never declares a hypothesis true, estimates causal probability, or authorizes remediation. No new host-execution path is introduced."
     }
   );
 

@@ -10,7 +10,7 @@
 
 OpsChugex LocalOps MCP is a cross-platform Model Context Protocol server for safely inspecting local Windows and Linux systems. It is designed as the local/private-infrastructure counterpart to the Cloud DevOps MCP Server.
 
-Version 2.1.0 adds Investigation Session Memory & Evidence Checkpoints while retaining the v2 Operational Knowledge Graph, guided investigation, durable incident knowledge, structured search, case clustering, recurrence analysis, Cross-Node Incident Correlation, Predictive Health Intelligence and the existing approval-gated remediation, topology, database, and storage/backup capabilities. LocalOps can create bounded case-linked investigation sessions, record normalized evidence-review checkpoints, track open/resolved/deferred questions, optionally persist session metadata locally, and analyze documentation coverage with similar historical-case context. Review coverage is documentation progress only, not confidence, root-cause probability or remediation readiness.
+Version 2.2.0 adds an Investigation Hypothesis Ledger & Evidence Provenance while retaining v2.1 investigation-session memory, the v2 Operational Knowledge Graph, durable incident knowledge, search/clustering, Cross-Node Incident Correlation, Predictive Health Intelligence and the existing approval-gated remediation, topology, database and storage/backup capabilities. Each bounded investigation can track operator-authored hypotheses and normalized supporting, contradicting or context evidence with explicit provenance. Evidence-balance analysis reports conflicts and evidence gaps without declaring a hypothesis true, estimating causal probability or authorizing remediation.
 
 ## Why this exists
 
@@ -88,6 +88,9 @@ LocalOps starts at the operating-system layer:
 - bounded case-linked investigation sessions with checkpoint and question tracking
 - optional durable investigation-session metadata across LocalOps restarts
 - private investigation-progress analysis with documentation-coverage and historical-case context
+- bounded operator-authored hypothesis ledgers for investigation sessions
+- typed supporting, contradicting and context evidence links with explicit provenance
+- private hypothesis evidence-balance analysis with conflict and evidence-gap reporting
 - bounded local fleet snapshots without raw event-log storage
 - in-memory node registration and snapshot freshness tracking
 - fleet health and inventory summaries
@@ -120,7 +123,7 @@ LocalOps starts at the operating-system layer:
 
 The long-term goal is evidence correlation across endpoints, private infrastructure, networking, storage and virtualization while keeping advanced OpsChugex intelligence proprietary.
 
-## v2.1 tools
+## v2.2 tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -235,6 +238,12 @@ The long-term goal is evidence correlation across endpoints, private infrastruct
 | `set_investigation_session_status` | Set a session open, paused or completed; completion blocks on open questions |
 | `investigation_session_status` | Show session-memory bounds and optional persistence state |
 | `investigation_progress_analysis` | Analyze documented review coverage, question state and similar historical cases |
+| `add_investigation_hypothesis` | Add one bounded operator-authored hypothesis to an investigation session |
+| `list_investigation_hypotheses` | List the hypothesis ledger with evidence-direction counts |
+| `investigation_hypothesis_details` | Read one hypothesis and its normalized evidence links |
+| `update_investigation_hypothesis` | Update operator-controlled hypothesis lifecycle state |
+| `link_hypothesis_evidence` | Link supporting, contradicting or context evidence with explicit provenance |
+| `investigation_hypothesis_analysis` | Analyze evidence balance, conflicts and provenance gaps without causal claims |
 | `fleet_health` | Summarize health, stale snapshots and node states across the registry |
 | `fleet_inventory` | Return bounded fleet metadata without raw event logs |
 | `compare_nodes` | Compare two registered snapshots through the private core |
@@ -440,9 +449,17 @@ Set `LOCALOPS_INVESTIGATION_PERSISTENCE=true` to persist bounded session metadat
 
 `investigation_progress_analysis` reports which checkpoint categories have been documented, open/resolved/deferred question counts, missing review areas and evidence-overlapping historical cases. Its coverage percentage measures recorded documentation categories only; it is not confidence, root-cause probability, remediation readiness or authorization.
 
+### v2.2 hypothesis ledger and evidence provenance
+
+Each investigation session can retain at most 25 hypotheses, with at most 50 normalized evidence links per hypothesis. Evidence links are classified as supporting, contradicting or context and use one explicit provenance class: current case, historical case, checkpoint-derived or unverified reference.
+
+The public MCP verifies that referenced stored cases and checkpoints exist before assigning validated provenance. The private core can then summarize evidence direction, conflicts and provenance gaps. That validation confirms the reference exists in the bounded LocalOps context; it does not prove that the underlying evidence is correct.
+
+Hypothesis lifecycle states are operator-controlled. Analysis never automatically marks a hypothesis supported or rejected, never converts evidence counts into probability, and never creates an approval token or execution authority.
+
 ## Safety model
 
-v2.1 keeps the existing controlled-execution, remediation, predictive, cross-node, recurrence, durable-knowledge and graph boundaries while adding bounded investigation-session state and progress analysis. Session writes modify LocalOps metadata only and cannot authorize execution:
+v2.2 keeps the existing controlled-execution, remediation, predictive, cross-node, recurrence, durable-knowledge and graph boundaries while adding bounded investigation-session state and progress analysis. Session writes modify LocalOps metadata only and cannot authorize execution:
 
 ```text
 R0 READ                     allowed
@@ -634,6 +651,7 @@ The public repository contains safe collection, bounded snapshots, schemas, fixe
 | 1.9 | Incident knowledge search and case clustering, completed |
 | 2.0 | Operational knowledge graph and guided investigation, completed |
 | 2.1 | Investigation session memory and evidence checkpoints, completed |
+| 2.2 | Investigation hypothesis ledger and evidence provenance, completed |
 
 ## Development principles
 

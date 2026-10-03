@@ -3,13 +3,18 @@ import * as z from "zod/v4";
 import { callPrivateIntelligence } from "./intelligence-client.js";
 import { incidentMemoryBundle } from "./incident-memory.js";
 import {
+  addInvestigationHypothesis,
   addInvestigationQuestion,
   createInvestigationSession,
+  investigationHypothesisDetails,
   investigationSessionDetails,
   investigationSessionStatus,
+  linkHypothesisEvidence,
+  listInvestigationHypotheses,
   listInvestigationSessions,
   recordInvestigationCheckpoint,
   setInvestigationSessionStatus,
+  updateInvestigationHypothesis,
   updateInvestigationQuestion
 } from "./investigation-session.js";
 
@@ -63,6 +68,29 @@ const questionStatusSchema = z.enum([
   "resolved",
   "deferred"
 ]);
+
+const hypothesisStatusSchema = z.enum([
+  "proposed",
+  "active",
+  "supported",
+  "weakened",
+  "rejected",
+  "retired"
+]);
+
+const evidenceStanceSchema = z.enum([
+  "supporting",
+  "contradicting",
+  "context"
+]);
+
+const evidenceProvenanceSchema = z.enum([
+  "current-case",
+  "historical-case",
+  "checkpoint-derived",
+  "unverified-reference"
+]);
+
 const checkpointSchema = z.object({
   checkpointId: z.string(),
   recordedAt: z.string(),
@@ -81,6 +109,27 @@ const questionSchema = z.object({
   operatorId: z.string()
 });
 
+const hypothesisEvidenceSchema = z.object({
+  evidenceId: z.string(),
+  linkedAt: z.string(),
+  operatorId: z.string(),
+  stance: evidenceStanceSchema,
+  provenance: evidenceProvenanceSchema,
+  reference: z.string(),
+  sourceCaseId: z.string().nullable(),
+  sourceCheckpointId: z.string().nullable()
+});
+
+const hypothesisSchema = z.object({
+  hypothesisId: z.string(),
+  statement: z.string(),
+  status: hypothesisStatusSchema,
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  operatorId: z.string(),
+  evidenceLinks: z.array(hypothesisEvidenceSchema)
+});
+
 const sessionSchema = z.object({
   sessionId: z.string(),
   caseId: z.string(),
@@ -90,7 +139,8 @@ const sessionSchema = z.object({
   updatedAt: z.string(),
   operatorId: z.string(),
   checkpoints: z.array(checkpointSchema),
-  questions: z.array(questionSchema)
+  questions: z.array(questionSchema),
+  hypotheses: z.array(hypothesisSchema)
 });
 
 const sessionSummarySchema = z.object({
@@ -102,11 +152,26 @@ const sessionSummarySchema = z.object({
   updatedAt: z.string(),
   checkpointCount: z.number(),
   openQuestionCount: z.number(),
+  hypothesisCount: z.number(),
+  activeHypothesisCount: z.number(),
   operatorId: z.string()
 });
 
+const hypothesisSummarySchema = z.object({
+  hypothesisId: z.string(),
+  statement: z.string(),
+  status: hypothesisStatusSchema,
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  operatorId: z.string(),
+  evidenceLinkCount: z.number(),
+  supportingEvidenceCount: z.number(),
+  contradictingEvidenceCount: z.number(),
+  contextEvidenceCount: z.number()
+});
+
 const progressSchema = z.object({
-  engineVersion: z.literal("2.1.0"),
+  engineVersion: z.literal("2.2.0"),
   generatedAt: z.string(),
   sessionId: z.string(),
   caseId: z.string(),
@@ -147,6 +212,49 @@ const progressSchema = z.object({
   interpretation: z.string(),
   limitations: z.array(z.string())
 });
+
+const hypothesisBalanceSchema = z.object({
+  engineVersion: z.literal("2.2.0"),
+  generatedAt: z.string(),
+  sessionId: z.string(),
+  caseId: z.string(),
+  hypothesisCount: z.number(),
+  conflictedHypothesisCount: z.number(),
+  withoutEvidenceCount: z.number(),
+  unverifiedEvidenceLinkCount: z.number(),
+  hypotheses: z.array(z.object({
+    hypothesisId: z.string(),
+    statement: z.string(),
+    status: hypothesisStatusSchema,
+    evidenceLinkCount: z.number(),
+    evidenceCounts: z.object({
+      supporting: z.number(),
+      contradicting: z.number(),
+      context: z.number()
+    }),
+    provenanceCounts: z.object({
+      currentCase: z.number(),
+      historicalCase: z.number(),
+      checkpointDerived: z.number(),
+      unverifiedReference: z.number()
+    }),
+    validatedProvenanceCount: z.number(),
+    unverifiedOrUnknownProvenanceCount: z.number(),
+    evidenceBalance: z.enum([
+      "no-evidence",
+      "support-only",
+      "contradiction-only",
+      "context-only",
+      "mixed"
+    ]),
+    conflictPresent: z.boolean(),
+    evidenceGap: z.boolean(),
+    interpretation: z.string()
+  })),
+  interpretation: z.string(),
+  limitations: z.array(z.string())
+});
+
 export function registerInvestigationTools(server: McpServer) {
   server.registerTool(
     "create_investigation_session",
@@ -170,7 +278,7 @@ export function registerInvestigationTools(server: McpServer) {
     {
       title: "List Investigation Sessions",
       description:
-        "List bounded LocalOps investigation-session metadata, checkpoint counts and open-question counts.",
+        "List bounded LocalOps investigation-session metadata, checkpoint counts, open-question counts and hypothesis counts.",
       annotations: readOnlyAnnotations,
       inputSchema: z.object({
         limit: z.number().int().min(1).max(50).optional()
@@ -190,7 +298,7 @@ export function registerInvestigationTools(server: McpServer) {
     {
       title: "Investigation Session Details",
       description:
-        "Read one bounded investigation session including checkpoints and tracked questions.",
+        "Read one bounded investigation session including checkpoints, questions and the hypothesis ledger.",
       annotations: readOnlyAnnotations,
       inputSchema: z.object({
         sessionId: z.string().min(1).max(84)
@@ -200,6 +308,7 @@ export function registerInvestigationTools(server: McpServer) {
     async ({ sessionId }) =>
       toolResult(await investigationSessionDetails(sessionId))
   );
+
   server.registerTool(
     "record_investigation_checkpoint",
     {
@@ -263,6 +372,128 @@ export function registerInvestigationTools(server: McpServer) {
         await updateInvestigationQuestion(sessionId, questionId, status)
       )
   );
+
+  server.registerTool(
+    "add_investigation_hypothesis",
+    {
+      title: "Add Investigation Hypothesis",
+      description:
+        "Add one bounded operator-authored hypothesis to an open or paused investigation session. The hypothesis is a tracked statement, not a system verdict.",
+      annotations: registryWriteAnnotations,
+      inputSchema: z.object({
+        sessionId: z.string().min(1).max(84),
+        statement: z.string().min(1).max(240)
+      }),
+      outputSchema: sessionSchema
+    },
+    async ({ sessionId, statement }) =>
+      toolResult(
+        await addInvestigationHypothesis(sessionId, { statement })
+      )
+  );
+
+  server.registerTool(
+    "list_investigation_hypotheses",
+    {
+      title: "List Investigation Hypotheses",
+      description:
+        "List the bounded hypothesis ledger for one investigation session with evidence-link counts.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({
+        sessionId: z.string().min(1).max(84)
+      }),
+      outputSchema: z.object({
+        sessionId: z.string(),
+        caseId: z.string(),
+        hypothesisCount: z.number(),
+        hypotheses: z.array(hypothesisSummarySchema)
+      })
+    },
+    async ({ sessionId }) =>
+      toolResult(await listInvestigationHypotheses(sessionId))
+  );
+
+  server.registerTool(
+    "investigation_hypothesis_details",
+    {
+      title: "Investigation Hypothesis Details",
+      description:
+        "Read one hypothesis and its normalized supporting, contradicting and context evidence links.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({
+        sessionId: z.string().min(1).max(84),
+        hypothesisId: z.string().min(1).max(84)
+      }),
+      outputSchema: hypothesisSchema
+    },
+    async ({ sessionId, hypothesisId }) =>
+      toolResult(
+        await investigationHypothesisDetails(sessionId, hypothesisId)
+      )
+  );
+
+  server.registerTool(
+    "update_investigation_hypothesis",
+    {
+      title: "Update Investigation Hypothesis",
+      description:
+        "Update the operator-controlled lifecycle state of a stored hypothesis. LocalOps does not automatically promote a hypothesis to supported.",
+      annotations: registryWriteAnnotations,
+      inputSchema: z.object({
+        sessionId: z.string().min(1).max(84),
+        hypothesisId: z.string().min(1).max(84),
+        status: hypothesisStatusSchema
+      }),
+      outputSchema: sessionSchema
+    },
+    async ({ sessionId, hypothesisId, status }) =>
+      toolResult(
+        await updateInvestigationHypothesis(
+          sessionId,
+          hypothesisId,
+          status
+        )
+      )
+  );
+
+  server.registerTool(
+    "link_hypothesis_evidence",
+    {
+      title: "Link Hypothesis Evidence",
+      description:
+        "Link one normalized evidence reference to a hypothesis as supporting, contradicting or context evidence with explicit provenance. No raw logs or command output are stored.",
+      annotations: registryWriteAnnotations,
+      inputSchema: z.object({
+        sessionId: z.string().min(1).max(84),
+        hypothesisId: z.string().min(1).max(84),
+        stance: evidenceStanceSchema,
+        provenance: evidenceProvenanceSchema,
+        reference: z.string().min(1).max(128),
+        sourceCaseId: z.string().min(1).max(84).optional(),
+        sourceCheckpointId: z.string().min(1).max(84).optional()
+      }),
+      outputSchema: sessionSchema
+    },
+    async ({
+      sessionId,
+      hypothesisId,
+      stance,
+      provenance,
+      reference,
+      sourceCaseId,
+      sourceCheckpointId
+    }) =>
+      toolResult(
+        await linkHypothesisEvidence(sessionId, hypothesisId, {
+          stance,
+          provenance,
+          reference,
+          sourceCaseId,
+          sourceCheckpointId
+        })
+      )
+  );
+
   server.registerTool(
     "set_investigation_session_status",
     {
@@ -287,11 +518,11 @@ export function registerInvestigationTools(server: McpServer) {
     {
       title: "Investigation Session Memory Status",
       description:
-        "Show v2.1 investigation-session bounds and whether optional local persistence is enabled.",
+        "Show v2.2 investigation-session, checkpoint, question and hypothesis-ledger bounds plus optional local persistence state.",
       annotations: readOnlyAnnotations,
       inputSchema: z.object({}),
       outputSchema: z.object({
-        version: z.literal("2.1.0"),
+        version: z.literal("2.2.0"),
         persistenceEnabled: z.boolean(),
         persistencePath: z.string().nullable(),
         sessionCount: z.number(),
@@ -301,6 +532,8 @@ export function registerInvestigationTools(server: McpServer) {
         maxSessions: z.number(),
         maxCheckpointsPerSession: z.number(),
         maxQuestionsPerSession: z.number(),
+        maxHypothesesPerSession: z.number(),
+        maxEvidenceLinksPerHypothesis: z.number(),
         storage: z.string()
       })
     },
@@ -330,6 +563,32 @@ export function registerInvestigationTools(server: McpServer) {
           similarityThreshold: similarityThreshold ?? 50,
           maxRelatedCases: maxRelatedCases ?? 10
         })
+      );
+    }
+  );
+
+  server.registerTool(
+    "investigation_hypothesis_analysis",
+    {
+      title: "Investigation Hypothesis Evidence Balance",
+      description:
+        "Analyze evidence balance and provenance across the bounded hypothesis ledger through the private intelligence core. Results describe evidence state only and never declare a hypothesis true or authorize remediation.",
+      annotations: readOnlyAnnotations,
+      inputSchema: z.object({
+        sessionId: z.string().min(1).max(84)
+      }),
+      outputSchema: hypothesisBalanceSchema
+    },
+    async ({ sessionId }) => {
+      const session = await investigationSessionDetails(sessionId);
+      return toolResult(
+        await callPrivateIntelligence(
+          "/v2/investigations/hypothesis-balance",
+          {
+            ...await incidentMemoryBundle(),
+            session
+          }
+        )
       );
     }
   );
